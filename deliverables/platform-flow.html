@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>个人知识学习平台 · 五层全流程图</title>
+<style>
+  :root{
+    --bg:#0b0e13; --ink:#e6edf3; --dim:#8b949e; --line:#26303d;
+    --flow:#4fd1c5; --amber:#e8a33d; --red:#e5534b;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{background:var(--bg)}
+  body{
+    color:var(--ink); min-height:100vh; overflow-x:hidden;
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+    background-color:var(--bg);
+    background-image:
+      linear-gradient(rgba(255,255,255,.030) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(255,255,255,.030) 1px,transparent 1px),
+      linear-gradient(rgba(255,255,255,.012) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(255,255,255,.012) 1px,transparent 1px);
+    background-size:44px 44px,44px 44px,11px 11px,11px 11px;
+  }
+  .page{max-width:1420px;margin:0 auto;padding:26px 20px 44px}
+  h1{font-family:"Songti SC","Noto Serif SC",serif;font-size:26px;letter-spacing:1px}
+  h1 .en{color:var(--dim);font-size:13px;font-family:ui-monospace,Menlo,monospace;
+         letter-spacing:0;margin-left:10px}
+  .sub{color:var(--dim);font-size:13px;margin-top:8px;line-height:1.7}
+  .main{display:flex;gap:18px;margin-top:20px;align-items:flex-start}
+  .stage{flex:1 1 auto;min-width:0;overflow-x:auto;border:1px solid var(--line);
+         border-radius:12px;background:rgba(255,255,255,.012)}
+  .stage svg{display:block}
+  .detail{flex:0 0 300px;background:#111721;border:1px solid var(--line);
+          border-radius:12px;padding:20px}
+  .detail .tag{display:inline-block;padding:2px 9px;border-radius:10px;font-size:11px;
+               font-weight:700;color:#0b0e13;margin-right:8px;
+               font-family:ui-monospace,Menlo,monospace}
+  .detail h2{font-size:18px;margin:6px 0 4px}
+  .detail .dim{color:var(--dim);font-size:12px;
+               font-family:ui-monospace,Menlo,monospace;margin-bottom:14px}
+  .detail .h{font-size:12px;color:var(--dim);letter-spacing:1px;margin:16px 0 8px;
+             border-bottom:1px solid var(--line);padding-bottom:6px}
+  .detail li{list-style:none;padding:6px 0 6px 16px;position:relative;font-size:14px;line-height:1.55}
+  .detail li::before{content:"›";position:absolute;left:0;color:var(--flow)}
+  .legend{display:flex;flex-wrap:wrap;gap:16px;margin-top:16px;color:var(--dim);font-size:12px}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;
+            vertical-align:middle}
+  .foot{margin-top:14px;color:var(--dim);font-size:12px;
+        font-family:ui-monospace,Menlo,monospace;line-height:1.8}
+  @media(max-width:1100px){
+    .main{flex-direction:column;align-items:stretch}
+    .stage{width:100%}
+    .detail{flex:1 1 auto;width:100%}
+    h1{font-size:22px}
+    h1 .en{display:block;margin:4px 0 0}
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>个人知识学习平台<span class="en">5 LAYERS / 20 STEPS</span></h1>
+  <div class="sub">分层：topic 定向 → 检索层 → 拓扑层（单 namespace）→ 图谱层（多 topic 组合）→ 画像层（抽象认知习惯）。每层内自左向右，层与层之间向下。</div>
+
+  <div class="main">
+    <div class="stage"><svg id="s" width="900" height="1040" viewBox="0 0 900 1040"></svg></div>
+    <div class="detail" id="detail"></div>
+  </div>
+
+  <div class="legend" id="legend"></div>
+  <div class="foot">
+    T 型 = 递进（竖·深度，如 JMM&nbsp;→&nbsp;volatile） + 借鉴（横·广度，如 InnoDB 刷盘&nbsp;→&nbsp;定时任务）<br>
+    升格闸门：≥2 条跨域借鉴 → 全局机制节点；实践验证 → 云枢 RAG（物理隔离、单向）
+  </div>
+</div>
+
+<script>
+const X = [260, 437, 613, 790];
+const WB = 152, HB = 56, HWB = WB/2, HHB = HB/2;
+
+const LAYERS = [
+  {id:'L1', label:'topic 定向', note:'给一个主题，定方向',   c:'#e8a33d', y:60,  h:125},
+  {id:'L2', label:'检 索 层',   note:'找可信源（可信元）',   c:'#4fd1c5', y:210, h:235},
+  {id:'L3', label:'拓 扑 层',   note:'单 namespace 拓扑',   c:'#6ea8fe', y:470, h:125},
+  {id:'L4', label:'图 谱 层',   note:'多 topic 组合成图谱', c:'#b197fc', y:620, h:235},
+  {id:'L5', label:'画 像 层',   note:'抽象认知习惯',        c:'#6e7681', y:880, h:125},
+];
+const L = Object.fromEntries(LAYERS.map(o=>[o.id,o]));
+const ROWY = {L1:[140], L2:[290,400], L3:[550], L4:[700,810], L5:[960]};
+
+const NODES = [
+  {n:'S1', ly:'L1', r:1,c:1,t:'输入 topic',      s:'定向',        d:['一句话：我想学什么','例：Java 多线程 · 内存可见性']},
+  {n:'S2', ly:'L1', r:1,c:2,t:'拆解关键词',      s:'topic → 词',   d:['把主题拆成检索词','例：JMM / volatile / 内存屏障 / happens-before']},
+  {n:'S3', ly:'L2', r:1,c:1,t:'找候选源',        s:'搜索',        d:['github 仓库 / 官方文档 / 源码 / 论文 / 大牛博客','交给 AI 去搜']},
+  {n:'S4', ly:'L2', r:1,c:2,t:'可信度分级',      s:'分级',        d:['规范·源码：最高','书籍·论文：高','大牛博客：中','社区讨论：低（仅线索）']},
+  {n:'S5', ly:'L2', r:1,c:3,t:'五问筛',          s:'筛选',        d:['稀缺 / 贴合 / 门槛 / 差分 / 信噪','前两条硬门槛，不过就排除']},
+  {n:'S6', ly:'L2', r:1,c:4,t:'可信源清单',      s:'产出',        d:['≤5 项，宁缺勿滥','例：JSR-133、OpenJDK 源码、Goetz 书']},
+  {n:'S7', ly:'L2', r:2,c:4,t:'读取内容',        s:'读取',        d:['读取可信源正文，作为梳理输入']},
+  {n:'S8', ly:'L3', r:1,c:1,t:'抽实体',          s:'实体',        d:['概念 / 机制 / 产品 / 规范 / 人物','只抽骨架，深挖留给 Q&A']},
+  {n:'S9', ly:'L3', r:1,c:2,t:'抽关系',          s:'关系',        d:['抽实体之间的关系','预判递进 / 借鉴']},
+  {n:'S10',ly:'L3', r:1,c:3,t:'实体对齐',        s:'对齐',        d:['同名、别名合并','不重复建卡']},
+  {n:'S11',ly:'L3', r:1,c:4,t:'建双链卡',        s:'单 namespace 拓扑', d:['单个 topic 的拓扑：实体 + 关系','页面跳关键词，关键词记引用数']},
+  {n:'V1', ly:'L4', r:1,c:1,t:'新知识向量化',    s:'embedding',   d:['新知识 / 新 topic 向量化']},
+  {n:'V2', ly:'L4', r:1,c:2,t:'cosine 召回近邻', s:'召回',        d:['与已有知识做余弦，取近邻（候选）','只解决「哪些相关」']},
+  {n:'V3', ly:'L4', r:1,c:3,t:'LLM 判边',        s:'精排 · 最深的坎', d:['判：递进 / 借鉴 / 无关 + 方向','schema 人定（递进=同域前置，借鉴=跨域同构）','「关系类型化」余弦做不到——真正的难点']},
+  {n:'V4', ly:'L4', r:1,c:4,t:'置信度门',        s:'门',          d:['低置信 → 待复核，不进图谱','高置信 → 挂边']},
+  {n:'V5', ly:'L4', r:2,c:4,t:'挂边',            s:'图谱',        d:['写进图谱层（多 topic 组合）','T 型：递进（竖·深度）+ 借鉴（横·广度）','稀疏网，只留可迁移边']},
+  {n:'V6', ly:'L4', r:2,c:3,t:'学习时带出',      s:'消费',        d:['学新知识时带出前置 / 底层 / 跨域借鉴','学习变快 = 命中已有边']},
+  {n:'V7', ly:'L4', r:2,c:2,t:'升格闸门',        s:'升格',        d:['≥2 跨域借鉴 → 升格为全局机制节点','实践验证 → 升格进云枢 RAG','与云枢 RAG 物理隔离、单向']},
+  {n:'P1', ly:'L5', r:1,c:1,t:'画像沉淀',        s:'最后做',      d:['后台沉淀学习偏好 / 思维模式','低信噪比，长期工程']},
+  {n:'P2', ly:'L5', r:1,c:2,t:'反哺抽象',        s:'反哺',        d:['学习时自动抽象到更高层','让整套知识体系更完善']},
+];
+const byN = Object.fromEntries(NODES.map(o=>[o.n,o]));
+const pos = o => ({cx:X[o.c-1], cy:ROWY[o.ly][o.r-1]});
+
+const SEQ = NODES.map(o=>o.n);
+const NS='http://www.w3.org/2000/svg';
+const svg=document.getElementById('s'), detail=document.getElementById('detail');
+const el=(tg,at)=>{const e=document.createElementNS(NS,tg);for(const k in at)e.setAttribute(k,at[k]);return e;};
+const mono=t=>{t.style.fontFamily='ui-monospace,Menlo,monospace';};
+
+// 箭头
+const defs=el('defs',{});
+[['ah','#4fd1c5'],['ahar','#e8a33d']].forEach(([id,col])=>{
+  const m=el('marker',{id:id,markerWidth:'9',markerHeight:'9',refX:'7',refY:'3',
+                       orient:'auto',markerUnits:'userSpaceOnUse'});
+  m.appendChild(el('path',{d:'M0,0 L7,3 L0,6 z',fill:col}));
+  defs.appendChild(m);
+});
+svg.appendChild(defs);
+
+// 层带 + 左侧标签
+LAYERS.forEach(b=>{
+  svg.appendChild(el('rect',{x:160,y:b.y,width:730,height:b.h,rx:12,
+                            fill:'rgba(255,255,255,0.012)',stroke:b.c,
+                            'stroke-opacity':'.38','stroke-width':'1'}));
+  const lab=el('text',{x:20,y:b.y+52,fill:b.c,'font-size':'15','font-weight':'700'});
+  lab.style.fontFamily='"Songti SC","Noto Serif SC",serif';
+  lab.textContent=b.label; svg.appendChild(lab);
+  const nt=el('text',{x:20,y:b.y+74,fill:'#8b949e','font-size':'11'}); mono(nt);
+  nt.textContent=b.note; svg.appendChild(nt);
+  const id=el('text',{x:20,y:b.y+30,fill:b.c,'font-size':'11','font-weight':'700'}); mono(id);
+  id.textContent=b.id; svg.appendChild(id);
+});
+
+// 连线
+const EDGES=[];
+for(let i=0;i<SEQ.length-1;i++) EDGES.push([byN[SEQ[i]], byN[SEQ[i+1]]]);
+
+EDGES.forEach(([a,b])=>{
+  const p=pos(a), q=pos(b);
+  let g;
+  if(a.ly!==b.ly){
+    const A=L[a.ly], B=L[b.ly];
+    const gy=(A.y+A.h+B.y)/2;
+    const pts=[p.cx,p.cy+HHB, p.cx,gy, q.cx,gy, q.cx,q.cy-HHB].join(' ');
+    g=el('polyline',{points:pts,fill:'none',stroke:'#4fd1c5','stroke-width':'1.6',
+                     'stroke-opacity':'.55','marker-end':'url(#ah)'});
+  } else if(a.r===b.r){
+    const s=q.cx>p.cx?1:-1;
+    const y1=p.cy, y2=q.cy, x1=p.cx+s*HWB, x2=q.cx-s*HWB;
+    g=el('line',{x1:x1,y1:y1,x2:x2,y2:y2,stroke:'#4fd1c5','stroke-width':'1.6',
+                 'stroke-opacity':'.55','marker-end':'url(#ah)'});
+  } else {
+    g=el('line',{x1:p.cx,y1:p.cy+HHB,x2:q.cx,y2:q.cy-HHB,stroke:'#4fd1c5',
+                 'stroke-width':'1.6','stroke-opacity':'.55','marker-end':'url(#ah)'});
+  }
+  g.dataset.a=a.n; g.dataset.b=b.n; g.setAttribute('class','edge');
+  svg.appendChild(g);
+});
+
+// 节点
+NODES.forEach(o=>{
+  const p=pos(o), col=L[o.ly].c, deep=(o.n==='V3');
+  const g=el('g',{class:'node'}); g.style.cursor='pointer'; g.dataset.n=o.n;
+  g.appendChild(el('rect',{x:p.cx-HWB,y:p.cy-HHB,width:WB,height:HB,rx:10,fill:'#0f1620',
+                           stroke:deep?'#e5534b':col,'stroke-width':deep?'2':'1.2',
+                           'stroke-opacity':deep?'1':'.75'}));
+  const code=el('text',{x:p.cx-HWB+10,y:p.cy+15,fill:deep?'#e5534b':col,'font-size':'10.5','font-weight':'700'});
+  mono(code); code.textContent=o.n; g.appendChild(code);
+  const tt=el('text',{x:p.cx+6,y:p.cy-2,fill:'#e6edf3','font-size':'13.5','font-weight':'600','text-anchor':'middle'});
+  tt.textContent=o.t; g.appendChild(tt);
+  const st=el('text',{x:p.cx+6,y:p.cy+16,fill:deep?'#e8a33d':'#8b949e','font-size':'10','text-anchor':'middle'});
+  mono(st); st.textContent=o.s; g.appendChild(st);
+  g.addEventListener('click',()=>select(o.n));
+  svg.appendChild(g);
+});
+
+// 图例
+document.getElementById('legend').innerHTML =
+  LAYERS.map(b=>'<span><i style="background:'+b.c+'"></i>'+b.label+'</span>').join('') +
+  '<span><i style="background:#e5534b"></i>最深的坎</span>' +
+  '<span><i style="background:#4fd1c5"></i>数据流</span>';
+
+function select(nid){
+  const o=byN[nid], p=pos(o);
+  document.querySelectorAll('.node rect').forEach(r=>{r.setAttribute('stroke-width','1.2');r.setAttribute('stroke-opacity','.75');});
+  document.querySelectorAll('.edge').forEach(e=>{e.setAttribute('stroke-opacity','.55');e.setAttribute('stroke-width','1.6');});
+  document.querySelectorAll('.node').forEach(g=>{
+    if(g.dataset.n===nid){const r=g.querySelector('rect');r.setAttribute('stroke-width','2.6');r.setAttribute('stroke-opacity','1');}
+  });
+  EDGES.forEach(([a,b])=>{
+    if(a.n===nid||b.n===nid){
+      const e=document.querySelector('.edge[data-a="'+a.n+'"][data-b="'+b.n+'"]');
+      if(e){e.setAttribute('stroke-opacity','1');e.setAttribute('stroke-width','2.6');}
+    }
+  });
+  const col=L[o.ly].c;
+  detail.innerHTML =
+    '<div><span class="tag" style="background:'+col+'">'+o.n+'</span>'+
+      '<span style="color:'+col+';font-size:12px;font-family:ui-monospace,Menlo,monospace">'+L[o.ly].label+'</span></div>'+
+    '<h2>'+o.t+'</h2><div class="dim">'+o.s+'</div>'+
+    '<div class="h">这一步做什么</div>'+
+    '<ul>'+o.d.map(x=>'<li>'+x+'</li>').join('')+'</ul>';
+}
+select('S1');
+</script>
+</body>
+</html>

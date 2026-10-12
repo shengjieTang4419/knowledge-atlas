@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>知识图谱 · knowledge-atlas</title>
+<style>
+  :root{ --bg:#0b0e13; --ink:#e6edf3; --dim:#8b949e; --line:#26303d;
+         --flow:#4fd1c5; --amber:#e8a33d; --red:#e5534b; }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{background:var(--bg)}
+  body{color:var(--ink);min-height:100vh;overflow-x:hidden;
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+    background-color:var(--bg);
+    background-image:
+      linear-gradient(rgba(255,255,255,.030) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(255,255,255,.030) 1px,transparent 1px),
+      linear-gradient(rgba(255,255,255,.012) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(255,255,255,.012) 1px,transparent 1px);
+    background-size:44px 44px,44px 44px,11px 11px,11px 11px;}
+  .page{max-width:1500px;margin:0 auto;padding:24px 20px 40px}
+  h1{font-family:"Songti SC","Noto Serif SC",serif;font-size:25px;letter-spacing:1px}
+  h1 .en{color:var(--dim);font-size:12px;font-family:ui-monospace,Menlo,monospace;margin-left:10px}
+  .sub{color:var(--dim);font-size:13px;margin-top:8px;font-family:ui-monospace,Menlo,monospace}
+  .bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:16px 0 6px}
+  button{background:#111721;color:var(--ink);border:1px solid var(--line);border-radius:8px;
+    padding:7px 14px;font-size:13px;cursor:pointer;font-family:inherit}
+  button:hover{border-color:var(--flow)}
+  button.on{border-color:var(--flow);color:var(--flow)}
+  .main{display:flex;gap:18px;align-items:flex-start;margin-top:12px}
+  .stage{flex:1 1 auto;min-width:0;overflow-x:auto;border:1px solid var(--line);
+    border-radius:12px;background:rgba(255,255,255,.012)}
+  .stage svg{display:block}
+  .detail{flex:0 0 320px;background:#111721;border:1px solid var(--line);border-radius:12px;padding:20px}
+  .detail h2{font-size:17px;margin-bottom:6px}
+  .detail .meta{color:var(--dim);font-size:12px;font-family:ui-monospace,Menlo,monospace;margin-bottom:14px}
+  .detail .h{font-size:12px;color:var(--dim);letter-spacing:1px;margin:16px 0 8px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .detail li{list-style:none;padding:5px 0 5px 15px;position:relative;font-size:13px;line-height:1.5}
+  .detail li::before{content:"›";position:absolute;left:0;color:var(--flow)}
+  .tag{display:inline-block;padding:2px 8px;border-radius:9px;font-size:11px;font-weight:700;
+    color:#0b0e13;margin-right:7px;font-family:ui-monospace,Menlo,monospace}
+  .warn{color:var(--amber);font-size:12px;margin-top:10px;line-height:1.6}
+  .empty{color:var(--dim);font-size:13px}
+  .dangling{margin-top:10px}
+  .dangling .dt{color:var(--amber);font-size:12px;font-family:ui-monospace,Menlo,monospace;margin-bottom:6px}
+  .dangling ul{display:flex;flex-wrap:wrap;gap:8px;list-style:none}
+  .dangling li{border:1px dashed #4a3b1f;border-radius:8px;padding:5px 10px;font-size:12px;color:#c9b48a}
+  @media(max-width:1100px){ .main{flex-direction:column;align-items:stretch}
+    .detail{flex:1 1 auto;width:100%} h1{font-size:21px} h1 .en{display:block;margin:4px 0 0} }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>知识图谱<span class="en">knowledge-atlas / data-driven view</span></h1>
+  <div class="sub">26 实体 · 34 条边 · 5 条边端点未建卡 · 数据源 data/wiki/ + data/graph/edges.md（改数据后重生成）</div>
+  <div class="bar">
+    <button id="f-all" class="on">全部边</button>
+    <button id="f-递进">只看递进（竖·深度）</button>
+    <button id="f-应用">只看应用（锚点·卡→实体）</button>
+  </div>
+  <div id="dangling" class="dangling"></div>
+  <div class="main">
+    <div class="stage"><svg id="s"></svg></div>
+    <div class="detail" id="detail"></div>
+  </div>
+</div>
+<script>
+const D = {"nodes": [{"key": "embedding是什么", "name": "Embedding 是什么", "etype": "概念", "one_line": "把任何物体折叠成固定维度的向量，让「相似」变成「距离近」。", "domain": "Embeddings与向量数据库", "color": "#4fd1c5", "x": 142, "y": 206, "w": 196, "h": 46}, {"key": "embedding模型", "name": "Embedding 模型", "etype": "选型", "one_line": "embedding 是「理解向量空间怎么工作」的层，但生产用现成模型，不自己训。", "domain": "Embeddings与向量数据库", "color": "#4fd1c5", "x": 142, "y": 264, "w": 196, "h": 46}, {"key": "embedding模型选择", "name": "Embedding 模型选择", "etype": "决策", "one_line": "按「语言 × 领域 × 部署方式 × 成本」四个轴选，不是看榜单。", "domain": "Embeddings与向量数据库", "color": "#4fd1c5", "x": 142, "y": 322, "w": 196, "h": 46}, {"key": "top-k检索", "name": "Top-K 检索", "etype": "机制", "one_line": "相似度从大到小排序，取前 K 个——检索的最小闭环。", "domain": "Embeddings与向量数据库", "color": "#4fd1c5", "x": 142, "y": 380, "w": 196, "h": 46}, {"key": "word2vec", "name": "word2vec", "etype": "模型", "one_line": "用「预测上下文」这个任务，让模型顺手学出每个词的向量。", "domain": "Embeddings与向量数据库", "color": "#4fd1c5", "x": 142, "y": 438, "w": 196, "h": 46}, {"key": "余弦相似度", "name": "余弦相似度", "etype": "概念", "one_line": "量两个向量「方向是否相同」，与长度无关。", "domain": "Embeddings与向量数据库", "color": "#4fd1c5", "x": 142, "y": 496, "w": 196, "h": 46}, {"key": "向量导入与元数据", "name": "向量导入与元数据", "etype": "机制", "one_line": "向量不是孤零零存的——必须带着原文和元数据，检索后能「回带」。", "domain": "Embeddings与向量数据库", "color": "#4fd1c5", "x": 142, "y": 554, "w": 196, "h": 46}, {"key": "向量库与传统数据库的区别", "name": "与传统数据库的区别", "etype": "概念", "one_line": "关系库是「精确匹配」，向量库是「近似相似」。", "domain": "Embeddings与向量数据库", "color": "#4fd1c5", "x": 142, "y": 612, "w": 196, "h": 46}, {"key": "向量库产品对比", "name": "向量库产品对比", "etype": "产品", "one_line": "四者不是同档竞品，是按「本地 / 生产 / 托管」分层。", "domain": "Embeddings与向量数据库", "color": "#4fd1c5", "x": 142, "y": 670, "w": 196, "h": 46}, {"key": "向量数据库", "name": "向量数据库", "etype": "存储", "one_line": "存向量 + 做近邻检索，带元数据——不是精确匹配，是近似相似。", "domain": "Embeddings与向量数据库", "color": "#4fd1c5", "x": 142, "y": 728, "w": 196, "h": 46}, {"key": "向量索引hnsw与量化", "name": "索引：HNSW / 量化", "etype": "机制", "one_line": "全量暴力遍历太慢，索引用「结构 + 压缩」换速度。", "domain": "Embeddings与向量数据库", "color": "#4fd1c5", "x": 142, "y": 786, "w": 196, "h": 46}, {"key": "相似度与检索", "name": "相似度与检索", "etype": "计算", "one_line": "检索的本质 = 排序 + 截断；排序的尺子就是相似度。", "domain": "Embeddings与向量数据库", "color": "#4fd1c5", "x": 142, "y": 844, "w": 196, "h": 46}, {"key": "词向量语义运算", "name": "词向量语义运算", "etype": "概念", "one_line": "向量运算捕获的是「语义关系」，不是字面——这是 embedding 学到结构的铁证。", "domain": "Embeddings与向量数据库", "color": "#4fd1c5", "x": 142, "y": 902, "w": 196, "h": 46}, {"key": "jmm内存模型", "name": "JMM 内存模型", "etype": "概念", "one_line": "定义 Java 线程间内存交互的抽象规则（happens-before），是多线程正确性的地基。", "domain": "Java多线程", "color": "#6ea8fe", "x": 562, "y": 206, "w": 196, "h": 46}, {"key": "mesi缓存一致性协议", "name": "MESI 缓存一致性协议", "etype": "机制", "one_line": "CPU 多核缓存保持一致性的硬件协议，volatile 可见性的底层支撑。", "domain": "Java多线程", "color": "#6ea8fe", "x": 562, "y": 264, "w": 196, "h": 46}, {"key": "volatile", "name": "volatile", "etype": "机制", "one_line": "基于 JMM 的可见性 / 有序性保证：写对后续读可见，禁止指令重排。", "domain": "Java多线程", "color": "#6ea8fe", "x": 562, "y": 322, "w": 196, "h": 46}, {"key": "攒批写", "name": "攒批写", "etype": "机制卡", "one_line": "把多次小写攒成一次批量写，用延迟换吞吐", "domain": "机制卡（金线）", "color": "#d29922", "x": 982, "y": 206, "w": 196, "h": 46}, {"key": "失效嗅探", "name": "失效嗅探", "etype": "机制卡", "one_line": "本地缓存失效后通过总线嗅探/广播通知其他副本失效，避免读到旧值", "domain": "机制卡（金线）", "color": "#d29922", "x": 982, "y": 264, "w": 196, "h": 46}, {"key": "折叠表征", "name": "折叠表征", "etype": "机制卡", "one_line": "把对象映射为固定维度的向量，用向量距离或方向近似对象之间的相似关系。", "domain": "机制卡（金线）", "color": "#d29922", "x": 982, "y": 322, "w": 196, "h": 46}, {"key": "按轴选型", "name": "按轴选型", "etype": "机制卡", "one_line": "先按语言、领域、部署方式、性能与成本等关键轴定义约束，再在约束内比较方案。", "domain": "机制卡（金线）", "color": "#d29922", "x": 982, "y": 380, "w": 196, "h": 46}, {"key": "用代理任务学表征", "name": "用代理任务学表征", "etype": "机制卡", "one_line": "设计一个可规模化的预测任务，让模型在完成任务的过程中隐式学习可复用的内部表征。", "domain": "机制卡（金线）", "color": "#d29922", "x": 982, "y": 438, "w": 196, "h": 46}, {"key": "排序截断", "name": "排序截断", "etype": "机制卡", "one_line": "用统一评分函数对候选排序，只保留排名靠前的 K 个结果。", "domain": "机制卡（金线）", "color": "#d29922", "x": 982, "y": 496, "w": 196, "h": 46}, {"key": "回带上下文", "name": "回带上下文", "etype": "机制卡", "one_line": "将可检索的表示与原始内容、标识和元数据绑定保存，命中后一起返回上下文。", "domain": "机制卡（金线）", "color": "#d29922", "x": 982, "y": 554, "w": 196, "h": 46}, {"key": "结构压缩加速", "name": "结构压缩加速", "etype": "机制卡", "one_line": "用索引结构缩小候选范围，并用压缩或量化降低存储与计算成本，以近似结果换取速度。", "domain": "机制卡（金线）", "color": "#d29922", "x": 982, "y": 612, "w": 196, "h": 46}, {"key": "建立先行关系", "name": "建立先行关系", "etype": "机制卡", "one_line": "显式建立写入、发布与读取之间的可见性和顺序关系，使并发参与者按约定观察状态。", "domain": "机制卡（金线）", "color": "#d29922", "x": 982, "y": 670, "w": 196, "h": 46}, {"key": "按匹配范式选存储", "name": "按匹配范式选存储", "etype": "机制卡", "one_line": "先判断需求是精确匹配还是近似相似，再选择对应的数据结构、索引和存储系统。", "domain": "机制卡（金线）", "color": "#d29922", "x": 982, "y": 728, "w": 196, "h": 46}], "boxes": [{"domain": "Embeddings与向量数据库", "x": 60, "y": 150, "w": 360, "h": 832, "color": "#4fd1c5"}, {"domain": "Java多线程", "x": 480, "y": 150, "w": 360, "h": 252, "color": "#6ea8fe"}, {"domain": "机制卡（金线）", "x": 900, "y": 150, "w": 360, "h": 658, "color": "#d29922"}], "links": [{"src": "jmm内存模型", "dst": "volatile", "type": "递进", "reason": "volatile 是 JMM 的关键字级实现"}, {"src": "volatile", "dst": "mesi缓存一致性协议", "type": "递进", "reason": "可见性底层靠 MESI + 内存屏障"}, {"src": "jmm内存模型", "dst": "mesi缓存一致性协议", "type": "递进", "reason": "namespace 内部关系"}, {"src": "embedding是什么", "dst": "word2vec", "type": "递进", "reason": "namespace 内部关系"}, {"src": "embedding是什么", "dst": "词向量语义运算", "type": "递进", "reason": "namespace 内部关系"}, {"src": "embedding模型", "dst": "embedding模型选择", "type": "递进", "reason": "namespace 内部关系"}, {"src": "embedding模型选择", "dst": "向量数据库", "type": "递进", "reason": "namespace 内部关系"}, {"src": "余弦相似度", "dst": "top-k检索", "type": "递进", "reason": "namespace 内部关系"}, {"src": "embedding是什么", "dst": "余弦相似度", "type": "递进", "reason": "namespace 内部关系"}, {"src": "向量数据库", "dst": "向量导入与元数据", "type": "递进", "reason": "namespace 内部关系"}, {"src": "向量数据库", "dst": "向量库与传统数据库的区别", "type": "递进", "reason": "namespace 内部关系"}, {"src": "向量数据库", "dst": "向量库产品对比", "type": "递进", "reason": "namespace 内部关系"}, {"src": "向量数据库", "dst": "向量索引hnsw与量化", "type": "递进", "reason": "namespace 内部关系"}, {"src": "top-k检索", "dst": "向量索引hnsw与量化", "type": "递进", "reason": "namespace 内部关系"}, {"src": "word2vec", "dst": "词向量语义运算", "type": "递进", "reason": "namespace 内部关系"}, {"src": "词向量语义运算", "dst": "相似度与检索", "type": "递进", "reason": "namespace 内部关系"}, {"src": "失效嗅探", "dst": "mesi缓存一致性协议", "type": "应用", "reason": "机制卡「失效嗅探」作用于 MESI缓存一致性协议"}, {"src": "折叠表征", "dst": "embedding是什么", "type": "应用", "reason": "机制卡「折叠表征」作用于 Embedding 是什么"}, {"src": "折叠表征", "dst": "embedding模型", "type": "应用", "reason": "机制卡「折叠表征」作用于 Embedding 模型"}, {"src": "折叠表征", "dst": "余弦相似度", "type": "应用", "reason": "机制卡「折叠表征」作用于 余弦相似度"}, {"src": "按轴选型", "dst": "embedding模型选择", "type": "应用", "reason": "机制卡「按轴选型」作用于 Embedding 模型选择"}, {"src": "按轴选型", "dst": "向量库产品对比", "type": "应用", "reason": "机制卡「按轴选型」作用于 向量库产品对比"}, {"src": "用代理任务学表征", "dst": "word2vec", "type": "应用", "reason": "机制卡「用代理任务学表征」作用于 word2vec"}, {"src": "用代理任务学表征", "dst": "embedding模型", "type": "应用", "reason": "机制卡「用代理任务学表征」作用于 Embedding 模型"}, {"src": "排序截断", "dst": "top-k检索", "type": "应用", "reason": "机制卡「排序截断」作用于 Top-K 检索"}, {"src": "排序截断", "dst": "相似度与检索", "type": "应用", "reason": "机制卡「排序截断」作用于 相似度与检索"}, {"src": "回带上下文", "dst": "向量导入与元数据", "type": "应用", "reason": "机制卡「回带上下文」作用于 向量导入与元数据"}, {"src": "回带上下文", "dst": "向量数据库", "type": "应用", "reason": "机制卡「回带上下文」作用于 向量数据库"}, {"src": "结构压缩加速", "dst": "向量数据库", "type": "应用", "reason": "机制卡「结构压缩加速」作用于 向量数据库"}, {"src": "建立先行关系", "dst": "jmm内存模型", "type": "应用", "reason": "机制卡「建立先行关系」作用于 JMM 内存模型"}, {"src": "建立先行关系", "dst": "mesi缓存一致性协议", "type": "应用", "reason": "机制卡「建立先行关系」作用于 MESI 缓存一致性协议"}, {"src": "建立先行关系", "dst": "volatile", "type": "应用", "reason": "机制卡「建立先行关系」作用于 volatile"}, {"src": "按匹配范式选存储", "dst": "向量数据库", "type": "应用", "reason": "机制卡「按匹配范式选存储」作用于 向量数据库"}, {"src": "按匹配范式选存储", "dst": "向量库产品对比", "type": "应用", "reason": "机制卡「按匹配范式选存储」作用于 向量库产品对比"}], "dangling": ["攒批写 → InnoDB 刷盘策略", "攒批写 → 定时任务批量写", "失效嗅探 → 分布式缓存一致性", "结构压缩加速 → 索引", "按匹配范式选存储 → 与传统数据库的区别"], "width": 900, "height": 1072};
+const NS='http://www.w3.org/2000/svg';
+const svg=document.getElementById('s'), detail=document.getElementById('detail');
+svg.setAttribute('viewBox','0 0 '+D.width+' '+D.height);
+svg.setAttribute('width',D.width); svg.setAttribute('height',D.height);
+const el=(t,a)=>{const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);return e;};
+const mono=x=>{x.style.fontFamily='ui-monospace,Menlo,monospace';};
+const pos={}; D.nodes.forEach(n=>pos[n.key]=n);
+
+// 箭头
+const defs=el('defs',{});
+[['ah','#4fd1c5'],['ah-b','#e8a33d']].forEach(([id,c])=>{
+  const m=el('marker',{id:id,markerWidth:'9',markerHeight:'9',refX:'7',refY:'3',
+    orient:'auto',markerUnits:'userSpaceOnUse'});
+  m.appendChild(el('path',{d:'M0,0 L7,3 L0,6 z',fill:c}));
+  defs.appendChild(m);
+});
+svg.appendChild(defs);
+
+// 领域框
+D.boxes.forEach(b=>{
+  svg.appendChild(el('rect',{x:b.x,y:b.y,width:b.w,height:b.h,rx:12,
+    fill:'rgba(255,255,255,0.012)',stroke:b.color,'stroke-opacity':'.4','stroke-width':'1'}));
+  const t=el('text',{x:b.x+18,y:b.y+30,fill:b.color,'font-size':'14','font-weight':'700'});
+  t.style.fontFamily='"Songti SC","Noto Serif SC",serif'; t.textContent=b.domain;
+  svg.appendChild(t);
+  const n=el('text',{x:b.x+18,y:b.y+46,fill:'#8b949e','font-size':'11'}); mono(n);
+  n.textContent=D.nodes.filter(x=>x.domain===b.domain).length+' 个实体';
+  svg.appendChild(n);
+});
+
+// 边：从源节点右边到目标节点左边（跨框走贝塞尔）
+D.links.forEach((l,i)=>{
+  const a=pos[l.src], b=pos[l.dst];
+  if(!a||!b) return;
+  const ax=a.x+a.w, ay=a.y+a.h/2, bx2=b.x, by=b.y+b.h/2;
+  const d = (b.x > a.x)
+    ? `M ${ax} ${ay} C ${ax+60} ${ay}, ${bx2-60} ${by}, ${bx2} ${by}`
+    : `M ${a.x+a.w/2} ${a.y+a.h} C ${a.x+a.w/2} ${a.y+a.h+70}, ${b.x+b.w/2} ${b.y-70}, ${b.x+b.w/2} ${b.y}`;
+  const p=el('path',{d:d,fill:'none',
+    stroke: l.type==='应用' ? '#e8a33d' : '#4fd1c5',
+    'stroke-width':'1.6','stroke-opacity':'.6','marker-end': 'url(#'+(l.type==='应用'?'ah-b':'ah')+')'});
+  p.dataset.type=l.type; p.dataset.src=l.src; p.dataset.dst=l.dst; p.setAttribute('class','edge');
+  const ti=el('title',{});
+  ti.textContent=l.src+' --'+l.type+'--> '+l.dst+(l.reason?'（'+l.reason+'）':'');
+  p.appendChild(ti);
+  svg.appendChild(p);
+});
+
+// 节点
+D.nodes.forEach(n=>{
+  const g=el('g',{class:'node'}); g.style.cursor='pointer'; g.dataset.key=n.key;
+  g.appendChild(el('rect',{x:n.x,y:n.y,width:n.w,height:n.h,rx:9,fill:'#0f1620',
+    stroke:n.color,'stroke-width':'1.2','stroke-opacity':'.8'}));
+  const t=el('text',{x:n.x+14,y:n.y+21,fill:'#e6edf3','font-size':'13.5','font-weight':'600'});
+  t.textContent=n.name.length>14? n.name.slice(0,14)+'…' : n.name; g.appendChild(t);
+  const s=el('text',{x:n.x+14,y:n.y+37,fill:'#8b949e','font-size':'10.5'}); mono(s);
+  s.textContent=n.etype; g.appendChild(s);
+  const ti=el('title',{}); ti.textContent=n.name+(n.one_line?'：'+n.one_line:''); g.appendChild(ti);
+  g.addEventListener('click',()=>select(n.key));
+  svg.appendChild(g);
+});
+
+let filter='all';
+function applyFilter(){
+  document.querySelectorAll('.edge').forEach(e=>{
+    e.style.display = (filter==='all'||e.dataset.type===filter) ? '' : 'none';
+  });
+}
+['all','递进','应用'].forEach(t=>{
+  const btn=document.getElementById('f-'+t);
+  if(!btn) return;
+  btn.addEventListener('click',()=>{
+    filter=t;
+    ['f-all','f-递进','f-应用'].forEach(id=>document.getElementById(id).classList.remove('on'));
+    btn.classList.add('on'); applyFilter();
+  });
+});
+
+function select(key){
+  const n=pos[key];
+  document.querySelectorAll('.node rect').forEach(r=>{
+    r.setAttribute('stroke-width','1.2');r.setAttribute('stroke-opacity','.8');
+  });
+  document.querySelectorAll('.edge').forEach(e=>e.setAttribute('stroke-opacity','.6'));
+  const g=document.querySelector('.node[data-key="'+key+'"] rect');
+  if(g){g.setAttribute('stroke-width','2.6');g.setAttribute('stroke-opacity','1');}
+  const out=D.links.filter(l=>l.src===key), inn=D.links.filter(l=>l.dst===key);
+  D.links.forEach(l=>{ if(l.src===key||l.dst===key){
+    const e=document.querySelector('.edge[data-src="'+l.src+'"][data-dst="'+l.dst+'"]');
+    if(e) e.setAttribute('stroke-opacity','1');
+  }});
+  const li=arr=>arr.length? '<ul>'+arr.map(l=>{
+    const other = l.src===key ? l.dst : l.src;
+    const dir = l.src===key ? '→' : '←';
+    const otherName = pos[other] ? pos[other].name : other;
+    const note = l.reason ? '<br><span style="color:#8b949e">'+l.reason+'</span>' : '';
+    return '<li>'+dir+' <b>'+(l.type)+'</b> '+otherName+note+'</li>';
+  }).join('')+'</ul>' : '<div class="empty">无</div>';
+  detail.innerHTML =
+    '<div><span class="tag" style="background:'+n.color+'">'+n.domain+'</span>'+
+    '<span style="color:#8b949e;font-size:12px;font-family:ui-monospace,Menlo,monospace">'+n.etype+'</span></div>'+
+    '<h2>'+n.name+'</h2>'+
+    '<div class="meta">'+n.key+'</div>'+
+    (n.one_line?'<div style="font-size:13px;line-height:1.6">'+n.one_line+'</div>':'')+
+    '<div class="h">出边（本实体指向）</div>'+li(out)+
+    '<div class="h">入边（指向本实体）</div>'+li(inn);
+}
+const dz=document.getElementById('dangling');
+if(D.dangling && D.dangling.length){
+  dz.innerHTML='<div class="dt">⚠ 以下 '+D.dangling.length+' 条边的端点尚未建卡（跨域节点，设计允许先挂名）：</div>'+
+    '<ul>'+D.dangling.map(x=>'<li>'+x+'</li>').join('')+'</ul>';
+} else { dz.remove(); }
+
+if(D.nodes.length) select(D.nodes[0].key);
+else detail.innerHTML='<div class="empty">data/wiki/ 下暂无实体卡片</div>';
+</script>
+</body>
+</html>

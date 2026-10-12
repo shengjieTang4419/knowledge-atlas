@@ -1,0 +1,10 @@
+allowBuilds:
+  electron: set this to true or false
+  esbuild: set this to true or false
+  vue-demi: set this to true or false
+# pnpm 11 起，构建白名单从这里读（package.json 的 pnpm 字段已失效）
+# 只放行必须跑 postinstall 的包：electron 要下二进制，esbuild/vue-demi 要落 native 产物
+onlyBuiltDependencies:
+  - electron
+  - esbuild
+  - vue-demi

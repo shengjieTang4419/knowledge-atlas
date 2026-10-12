@@ -1,0 +1,46 @@
+{
+	"name": "knowledge-atlas (Python 3.12 + Node 22)",
+	"build": {
+		"dockerfile": "Dockerfile"
+	},
+	// Node 用官方 feature 装（比在 Dockerfile 里手搓 apt/nodesource 稳，且跟着社区升级）
+	"features": {
+		"ghcr.io/devcontainers/features/node:1": {
+			"version": "22"
+		}
+	},
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"charliermarsh.ruff",
+				"ms-python.python",
+				"ms-python.vscode-pylance",
+				"ms-python.debugpy",
+				"Vue.volar",
+				"humao.rest-client",
+				"yzhang.markdown-all-in-one"
+			],
+			// 基础镜像的 Python Feature 会往容器 settings 写 autopep8 作默认 formatter，
+			// 这里覆盖回 ruff（仓库约定）。解释器的权威开关在 .vscode/settings.json
+			// 的 python-envs.defaultEnvManager，不在这里。
+			"settings": {
+				"python.defaultInterpreterPath": "${containerWorkspaceFolder}/.venv/bin/python",
+				"[python]": {
+					"editor.defaultFormatter": "charliermarsh.ruff"
+				}
+			}
+		}
+	},
+	// 两个命名卷，理由相同：容器重建不丢、且**不污染宿主**。
+	//  · .venv 必须隔离（宿主可能是 macOS/别的架构）
+	//  · frontend/node_modules 也必须隔离：宿主那份含 macOS 版 Electron 二进制，
+	//    容器 pnpm install 会把它覆盖成 Linux 版，**弄坏宿主的桌面端**。
+	"mounts": [
+		"source=knowledge-atlas-venv,target=${containerWorkspaceFolder}/.venv,type=volume",
+		"source=knowledge-atlas-node-modules,target=${containerWorkspaceFolder}/frontend/node_modules,type=volume"
+	],
+	// 容器里跳过 Electron 二进制（Electron 窗口必须在宿主跑，容器里下载 100MB 也用不上）
+	// corepack enable：让 pnpm 按 package.json 的 packageManager 字段自动套用同版本
+	"postCreateCommand": "sudo chown -R $(id -u):$(id -g) .venv frontend/node_modules 2>/dev/null || true; sudo corepack enable; uv sync; cd frontend && ELECTRON_SKIP_BINARY_DOWNLOAD=1 pnpm install",
+	"remoteUser": "vscode"
+}

@@ -1,0 +1,19 @@
+appId: com.tangshengjie.knowledge-atlas
+productName: Knowledge Atlas
+directories:
+  buildResources: resources
+  output: release
+files:
+  - out/**
+  - resources/**
+# 薄壳：Python 业务不打进包；运行时按 KNOWLEDGE_ATLAS_ROOT 定位仓库根
+extraMetadata:
+  main: out/main/index.js
+mac:
+  target: dmg
+  category: public.app-category.productivity
+win:
+  target: nsis
+linux:
+  target: AppImage
+  category: Utility

@@ -1,0 +1,51 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual env
+.venv/
+venv/
+ENV/
+
+# IDE（.vscode 只入库共享配置，个人本地设置不入库）
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Env & secrets
+.env
+.env.*
+!.env.example
+
+# uv（uv.lock 需入库：容器 postCreate 的 uv sync --frozen 依赖它）
+
+# Testing / linting cache
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# 用户设置（界面里改出来的个人配置，属运行时状态，不入库）
+data/settings/
+
+# Obsidian（阅读器本地状态不入库；双链卡本体在 data/wiki/ 必须入库）
+data/wiki/.obsidian/
+.obsidian/
+
+# 验证截图（留盘不入库）
+ledger/*.png
+ledger/*.jpg
+
+# 日志
+*.log

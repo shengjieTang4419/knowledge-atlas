@@ -1,0 +1,22 @@
+# Dependencies
+node_modules
+.pnpm-store
+
+# Build output
+out
+dist
+release
+*.local
+
+# TS 增量构建信息（tsc --composite 产物，不入库）
+*.tsbuildinfo
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea
+*.swp
+
+# OS
+.DS_Store

@@ -1,0 +1,55 @@
+[project]
+name = "knowledge-atlas"
+version = "0.1.0"
+description = "个人知识学习平台 · 五层：topic 定向 / 检索 / 拓扑 / 图谱 / 画像"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    # Config & Validation
+    "pydantic>=2.12.4",
+    "pydantic-settings>=2.11.0",
+    # 配置与 prompt 模板（config/*.yml 需要注释能力，JSON 做不到）
+    "pyyaml>=6.0.3",
+    # 配置里的 ${VAR} 取值来源需与 Settings 同源的 .env
+    "python-dotenv>=1.0.1",
+    # LLM / embedding 调用（OpenAI 兼容：iFans / RelayRouter）
+    "httpx>=0.28.1",
+]
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.3.0",
+    "pytest>=8.4.2",
+    "ruff>=0.14.3",
+    "mypy>=1.15.0",
+    "types-pyyaml>=6.0.12.20260906",
+]
+
+[[tool.uv.index]]
+url = "https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple/"
+default = true
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "UP", "B", "SIM", "I", "ANN", "TCH"]
+task-tags = ["TODO", "FIXME", "DOC"]
+
+[tool.ruff.lint.per-file-ignores]
+# 测试豁免类型注解（ANN）：用例签名不对任何调用方构成契约；
+# 契约检查的落点是 app/ 的 mypy strict。其余规则对测试照常生效。
+"tests/**" = ["ANN"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+# 逐模块显示错误码，便于定位「哪条新规被破」
+show_error_codes = true

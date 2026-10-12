@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI图谱深度学习 · 架构评审</title>
+<style>
+  :root {
+    --bg: #0d1117; --panel: #161b22; --border: #30363d;
+    --text: #e6edf3; --dim: #8b949e; --accent: #58a6ff;
+    --good: #3fb950; --warn: #d29922; --bad: #f85149; --purple: #bc8cff;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, "PingFang SC", sans-serif; padding: 32px; line-height: 1.6; }
+  h1 { font-size: 22px; margin-bottom: 4px; }
+  .sub { color: var(--dim); font-size: 13px; margin-bottom: 24px; }
+  .verdict { display: flex; gap: 12px; margin-bottom: 28px; flex-wrap: wrap; }
+  .chip { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; font-size: 13px; flex: 1; min-width: 200px; }
+  .chip b { display: block; margin-bottom: 2px; font-size: 14px; }
+  .chip.ok b { color: var(--good); } .chip.fix b { color: var(--warn); } .chip.rework b { color: var(--bad); } .chip.move b { color: var(--purple); }
+
+  .layout { display: grid; grid-template-columns: 420px 1fr; gap: 24px; align-items: start; }
+  @media (max-width: 960px) { .layout { grid-template-columns: 1fr; } }
+
+  .layer { background: var(--panel); border: 1px solid var(--border); border-left: 4px solid var(--border); border-radius: 8px; padding: 14px 16px; margin-bottom: 10px; cursor: pointer; transition: all .15s; }
+  .layer:hover { border-color: var(--accent); }
+  .layer.active { border-left-color: var(--accent); background: #1c2330; }
+  .layer .tag { font-size: 11px; padding: 1px 8px; border-radius: 10px; margin-left: 8px; }
+  .tag.keep { background: rgba(63,185,80,.15); color: var(--good); }
+  .tag.rework { background: rgba(248,81,73,.15); color: var(--bad); }
+  .tag.move { background: rgba(188,140,255,.15); color: var(--purple); }
+  .layer h3 { font-size: 15px; display: inline; }
+  .layer p { font-size: 12.5px; color: var(--dim); margin-top: 4px; }
+  .arrow { text-align: center; color: var(--dim); font-size: 16px; margin: -4px 0 6px; }
+
+  .crosscut { border: 1px dashed var(--purple); border-radius: 8px; padding: 12px 16px; margin-top: 14px; cursor: pointer; background: rgba(188,140,255,.06); }
+  .crosscut:hover { border-color: var(--purple); }
+  .crosscut h3 { font-size: 14px; color: var(--purple); display: inline; }
+  .crosscut p { font-size: 12.5px; color: var(--dim); margin-top: 4px; }
+
+  #detail { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 22px; min-height: 480px; position: sticky; top: 24px; }
+  #detail h2 { font-size: 17px; margin-bottom: 12px; }
+  #detail h4 { font-size: 13px; color: var(--accent); margin: 16px 0 6px; }
+  #detail ul { padding-left: 18px; font-size: 13.5px; }
+  #detail li { margin-bottom: 5px; }
+  #detail .why { background: #1c2330; border-left: 3px solid var(--warn); padding: 10px 12px; border-radius: 0 6px 6px 0; font-size: 13px; margin-top: 14px; color: #cdd9e5; }
+  code { background: #1f2937; padding: 1px 6px; border-radius: 4px; font-size: 12px; color: #79c0ff; }
+
+  .insight { margin-top: 32px; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 24px; }
+  .insight h2 { font-size: 17px; margin-bottom: 6px; }
+  .insight .sub2 { color: var(--dim); font-size: 13px; margin-bottom: 18px; }
+  .spaces { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 800px) { .spaces { grid-template-columns: 1fr; } }
+  .space { border: 1px solid var(--border); border-radius: 8px; padding: 16px; }
+  .space h3 { font-size: 14px; margin-bottom: 10px; }
+  .space.bad h3 { color: var(--bad); } .space.good h3 { color: var(--good); }
+  .node { display: inline-block; background: #1c2330; border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px; font-size: 12px; margin: 3px; }
+  .node.far { opacity: .55; }
+  .node.hot { border-color: var(--good); color: var(--good); }
+  .edge-line { font-size: 12.5px; color: var(--dim); margin-top: 10px; }
+  .kv { font-size: 13px; margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--border); color: #cdd9e5; }
+
+  .edges { margin-top: 32px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  @media (max-width: 800px) { .edges { grid-template-columns: 1fr; } }
+  .edge-card { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 16px; }
+  .edge-card h3 { font-size: 14px; margin-bottom: 6px; }
+  .edge-card code { font-size: 11.5px; }
+  .edge-card p { font-size: 12.5px; color: var(--dim); margin-top: 6px; }
+  .edge-card .ex { font-size: 12.5px; color: #cdd9e5; margin-top: 8px; }
+
+  .demo { margin-top: 32px; background: linear-gradient(135deg, rgba(88,166,255,.08), rgba(188,140,255,.08)); border: 1px solid var(--accent); border-radius: 10px; padding: 24px; }
+  .demo h2 { font-size: 17px; margin-bottom: 12px; }
+  .demo table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .demo td, .demo th { border: 1px solid var(--border); padding: 8px 12px; text-align: left; }
+  .demo th { background: rgba(88,166,255,.1); }
+  .demo td.build { color: var(--bad); font-weight: 600; }
+  .demo td.reuse { color: var(--good); }
+  .footer { margin-top: 24px; color: var(--dim); font-size: 12px; text-align: center; }
+</style>
+</head>
+<body>
+
+<h1>AI图谱深度学习 · 架构评审图解</h1>
+<div class="sub">评审结论:五层方向对,但 <b style="color:var(--warn)">第④层工具想错了</b>、<b style="color:var(--purple)">第⑤层位置放错了</b> —— 修正为「4 层流水线 + 1 个横切服务」。点击左侧各层查看处置细节。</div>
+
+<div class="verdict">
+  <div class="chip ok"><b>① Topic层 → 保留</b>标准 Query Understanding,别多做</div>
+  <div class="chip ok"><b>② 检索层 → 保留</b>但初期直接复用你的 WeKnora,别重造</div>
+  <div class="chip ok"><b>③ 图谱层 → 保留</b>最扎实的一层,骨架/血肉分离已被 GraphRAG+Obsidian 验证</div>
+  <div class="chip rework"><b>④ 知识层 → 重做数据模型</b>Embedding 找不到"机制同构",需要机制卡 + 三种边</div>
+  <div class="chip move"><b>⑤ 偏好层 → 降级为横切</b>它不是流水线的一环,是注入所有层输出的 Profile 上下文</div>
+</div>
+
+<div class="layout">
+  <div>
+    <div class="layer active" data-k="l1"><h3>L1 Topic层</h3><span class="tag keep">保留 · 收敛</span><p>主题搜索 / 拆解 / 改写 / 关键字 —— 标准 RAG 查询理解</p></div>
+    <div class="arrow">▼</div>
+    <div class="layer" data-k="l2"><h3>L2 检索层</h3><span class="tag keep">保留 · 复用</span><p>BM25 + 向量 + 图游走 三路召回,置信度治理</p></div>
+    <div class="arrow">▼</div>
+    <div class="layer" data-k="l3"><h3>L3 图谱层(表示层)</h3><span class="tag keep">保留 · 加厚</span><p>wiki 骨架(实体/关系) + Markdown 血肉(文档跳转)</p></div>
+    <div class="arrow">▼</div>
+    <div class="layer" data-k="l4"><h3>L4 知识层(机制层)</h3><span class="tag rework">重做数据模型</span><p>机制卡 + is-a / analog / applies-to 三种边 —— 全项目真正的壁垒</p></div>
+    <div class="crosscut" data-k="l5"><h3>⚡ Profile 服务(原偏好层)</h3><p>横切:不作为流水线一层,而是注入 L1 拆解策略 / L3 呈现形态 / L4 类比偏好的上下文</p></div>
+  </div>
+  <div id="detail"></div>
+</div>
+
+<div class="insight">
+  <h2>核心洞察:为什么 Embedding 找不到「InnoDB刷盘 → 定时任务批量刷盘」</h2>
+  <div class="sub2">这不是 embedding 模型不够好,是<b>向量空间组织错了对象</b>。同一个 embedding 技术,换个被 embedding 的对象,就从不灵变灵。</div>
+  <div class="spaces">
+    <div class="space bad">
+      <h3>✗ 在「内容空间」里找类比(你现在的设想)</h3>
+      <span class="node">InnoDB Buffer Pool 刷盘</span><span class="node">redo log</span><span class="node">MySQL 崩溃恢复</span>
+      <br><span class="node far">定时任务批量刷盘 ← 向量距离很远</span><span class="node far">TCC → 订单预扣 ← 更远</span>
+      <div class="edge-line">内容空间按「话题相似」组织:都在讲 MySQL 的近,讲定时任务的远。而类比恰恰发生在<b>话题很远</b>的地方。</div>
+      <div class="kv">结论:embedding 适合召回同话题材料(L2 检索层),<b>不适合做跨域迁移发现(L4)</b>。</div>
+    </div>
+    <div class="space good">
+      <h3>✓ 在「机制空间」里找类比(修正后)</h3>
+      <span class="node hot">机制卡: 内存累积+阈值触发+批量落盘+崩溃可恢复</span>
+      <br><span class="node">InnoDB 刷盘</span> ─analog─ <span class="node">定时任务批量刷盘</span> ─analog─ <span class="node">批量INSERT合并</span>
+      <div class="edge-line">把每个知识点<b>翻译两次</b>:一次是内容(归 embedding 管),一次是机制(问题形态/解法结构/权衡/适用边界)。L4 的匹配走在机制卡空间。</div>
+      <div class="kv">关键:对<b>机制描述文本</b>做 embedding,类比就近了;LLM 再判定边类型与置信度 —— 正好接上你 L2 想要的「评判标准+置信度机制」。</div>
+    </div>
+  </div>
+</div>
+
+<div class="edges">
+  <div class="edge-card"><h3>🔗 is-a / contains(骨架边)</h3><code>juc → jvm → jmm</code><p>你说的"天生关联性"。来自 L3 图谱抽取,树/图结构,人审成本低。</p><div class="ex">用途:学习路径、前置知识导航、多跳遍历的主干道。</div></div>
+  <div class="edge-card"><h3>⚡ analog(迁移边)</h3><code>刷盘思想 ≈ 批量刷盘</code><p>跨域机制同构。<b>只能生在机制卡之间</b>,LLM 判定 + 置信度 + 人审队列。</p><div class="ex">用途:"这个新知识,像我已懂的什么?" —— 快速拆解类比的核心。</div></div>
+  <div class="edge-card"><h3>🎯 applies-to(应用边)</h3><code>TCC → 订单预扣/解锁</code><p>模式 → 具体业务场景的显式落地。你从业务里反向标注,越用越准。</p><div class="ex">用途:"这个机制能用在哪" —— 你强调的"对知识有良好的应用"。</div></div>
+</div>
+
+<div class="demo">
+  <h2>Demo 范围砍法(YAGNI):4 周只验证一件事 —— 「新知识能否自动挂到我的机制卡上」</h2>
+  <table>
+    <tr><th>部件</th><th>处置</th><th>理由</th></tr>
+    <tr><td>L1 Topic 拆解/改写</td><td class="reuse">一次 LLM 调用,不做工程</td><td>已解问题,验证期不值当铺工程</td></tr>
+    <tr><td>L2 检索</td><td class="reuse">复用本地 WeKnora(你已有 API 在跑)</td><td>无非必要不增实体;自建 RAG 是别人踩过的坑</td></tr>
+    <tr><td>L3 图谱+wiki</td><td class="reuse">Markdown 真相源 + SQLite 一个文件三个索引(FTS5 / sqlite-vec / edges 表)</td><td>demo 期不上 Neo4j/Milvus;md 可被 Obsidian 直接可视化</td></tr>
+    <tr><td>L4 机制卡抽取器</td><td class="build">新建 ★</td><td>schema: 名称/解决什么问题/核心机制/权衡/适用边界/迁移案例 —— 就是把你 elegant-case 的机制思想卡自动化</td></tr>
+    <tr><td>L4 挂载建议器</td><td class="build">新建 ★</td><td>新知识 → 机制卡空间召回候选 → LLM 判边型+置信度 → >0.8 自动挂 / 0.5~0.8 待确认队列 / <0.5 丢弃</td></tr>
+    <tr><td>Profile</td><td class="reuse">一个 profile.yaml,3 个开关(抽象↔具象 / 要不要图 / 先结论还是先例子)</td><td>先证明"注入即生效",不做画像学习</td></tr>
+  </table>
+</div>
+
+<div class="footer">评审:DeepSeek Harness · shengjie.tang 的个人项目架构评审 · 2026-10-11</div>
+
+<script>
+const D = {
+  l1: `<h2>L1 Topic层 —— 保留,但收敛到「查询理解」</h2>
+    <h4>评判</h4><ul>
+      <li>方向正确:拆解(decompose)+ 改写(rewrite)+ 关键字抽取,这就是标准 RAG 的 Query Understanding,和你灵感来源一致。</li>
+      <li>风险:把它做成"主题工程"。demo 期它就是<b>一次 LLM 调用 + 一个 prompt</b>,输出 3~5 个子查询 + 关键字列表,完事。</li></ul>
+    <h4>技术选型(Python)</h4><ul>
+      <li>LLM 走你已有的 relay(dashscope/ifans),HyDE + multi-query 二选一即可。</li>
+      <li>关键字路径留给 L2 的 BM25,不在本层做匹配逻辑。</li></ul>
+    <div class="why"><b>取舍留痕:</b>查询理解的质量上限在检索与组装,不在本层花样。此处每多写一行工程代码,都是对 L4 的资源挤占。</div>`,
+  l2: `<h2>L2 检索层 —— 保留,初期直接复用 WeKnora</h2>
+    <h4>评判</h4><ul>
+      <li>"手工配置 + AI自动检索"本质不是两个来源,是<b>召回的两条通道</b>(人工策展 vs 机器召回),这个直觉是对的。</li>
+      <li>置信度机制想得对,但要落到具体治理:<b>>0.8 自动入库 / 0.5~0.8 进待确认队列 / <0.5 丢弃</b>,LLM-as-judge 打分,人只审中间带。</li></ul>
+    <h4>技术选型</h4><ul>
+      <li>混合召回 = BM25(精确)+ 向量(语义)+ <b>图游走(多跳)</b> —— 你说的"多知识实体多跳"由第三路保证,这是纯向量库给不了的。</li>
+      <li>demo 期:本地 WeKnora 扛前两路;图游走在自建 SQLite edges 表上跑(recursive CTE 就够)。</li>
+      <li>rerank 加 bge-reranker,性价比极高。</li></ul>
+    <div class="why"><b>取舍留痕:</b>检索是已解问题,你的差异化不在此。唯一要自建的是"图游走"这一路与置信度人审队列——因为它们连着 L4。</div>`,
+  l3: `<h2>L3 图谱层 —— 保留,定位修正为「表示层」</h2>
+    <h4>评判</h4><ul>
+      <li>五层里最扎实的一层。"骨架(实体/关系)+ 血肉(文档跳转)"正是 GraphRAG 与 Obsidian 双链验证过的模型。</li>
+      <li>修正定位:它是<b>表示层</b>,只负责"知识长什么样",不承担"知识之间怎么迁移"——那是 L4 的事。两层混为一谈是你现在模糊的根因之一。</li></ul>
+    <h4>技术选型</h4><ul>
+      <li>真相源 = Markdown + frontmatter(git 可版本化、Obsidian 直接可视化、你写起来零成本)。</li>
+      <li>LLM 从文档抽实体/关系入 <code>edges</code> 表,wiki 页由骨架自动渲染,正文跳转 md。</li></ul>
+    <div class="why"><b>取舍留痕:</b>骨架允许不完美(可再抽),血肉必须人写或人审——机器生成的血肉不入库,这是你知识体系的信任底线。</div>`,
+  l4: `<h2>L4 知识层 —— 方向最对,数据模型重做</h2>
+    <h4>你问"为什么要做这一层"——答案</h4><ul>
+      <li>因为它是<b>唯一别人抄不走的层</b>。L1~L3 市面产品都有;把"刷盘思想"迁移到"批量刷盘"的能力,没有主流产品做到。</li>
+      <li>它对应你的预期效果里最关键的一句:"<b>用我熟悉的方式对新知识快速拆解类比,挂在我的知识节点上</b>"。</li></ul>
+    <h4>为什么 Embedding 不够</h4><ul>
+      <li>Embedding 空间按话题相似组织,而类比迁移是<b>结构相似、话题遥远</b> —— 在向量空间里恰好最远。见下方「核心洞察」对照图。</li>
+      <li>解法:知识点翻译两次。内容归 embedding;机制抽成<b>机制卡</b>(问题形态/解法结构/权衡/适用边界)。对机制描述做 embedding,类比就近了。</li></ul>
+    <h4>你已经验证过这个模型</h4><ul>
+      <li>elegant-case 十大家族、机制思想卡、三向分流 —— 你手工干的就是 L4 的数据模型。这个项目是<b>用 LLM 把它自动化</b>,不是发明新东西。这是全案我最笃定的一点。</li></ul>
+    <div class="why"><b>取舍留痕:</b>边只定义三种(is-a / analog / applies-to),不铺满本体论。每加一种边类型,必须能说出一个真实查询场景——否则不加。</div>`,
+  l5: `<h2>Profile 服务 —— 从「层」降级为「横切上下文」</h2>
+    <h4>为什么不是一层</h4><ul>
+      <li>流水线层的定义:输入经它变换为输出,且只在数据流上经过一次。偏好不满足——它在 L1 拆解策略、L3 呈现形态、L4 类比选择上<b>都要在场</b>。</li>
+      <li>硬放成一层,会得到一个每次调用都读它、却没有独立输入输出的"假层"。</li></ul>
+    <h4>正确形态</h4><ul>
+      <li>一个 <code>profile.yaml</code> + 组装器:每层出 prompt/渲染时注入对应切片。类比:它是 system prompt 级的上下文,不是 pipeline stage。</li>
+      <li>demo 期 3 个开关足够:抽象↔具象、要不要图、先结论还是先例子。你自己就是强视觉学习者,先服务你自己。</li>
+      <li>"底层思维模式不易变"说得对——所以初期<b>手工维护,不做画像学习</b>。画像学习是商业化阶段的故事。</li></ul>
+    <div class="why"><b>取舍留痕:</b>Profile 的价值不在"存了什么",在"每层真的用了"。验收标准:同一次查询,切两个 profile,输出形态肉眼可辨地不同。</div>`
+};
+const el = document.getElementById('detail');
+function show(k){ el.innerHTML = D[k]; document.querySelectorAll('.layer,.crosscut').forEach(e=>e.classList.toggle('active', e.dataset.k===k)); }
+document.querySelectorAll('.layer,.crosscut').forEach(e=>e.addEventListener('click',()=>show(e.dataset.k)));
+show('l1');
+</script>
+</body>
+</html>

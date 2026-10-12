@@ -1,0 +1,38 @@
+# 可信源注册表 + 可信度分级（L2 检索层用）
+# 可信度越大越可信。规范/源码 = 确定性真相源（现场取，不进 RAG）；书籍/论文/博客 = 经验性（经梳理入 namespace）。
+
+credibility:
+  规范: 5
+  源码: 5
+  书籍: 4
+  论文: 4
+  博客: 3
+  社区: 1
+
+# 五问筛：前两条是硬门槛（不过即排除），后三条用于排序
+filters:
+  hard: [稀缺, 贴合]
+  soft: [门槛, 差分, 信噪]
+  max_sources: 5          # 宁缺勿滥
+
+# 领域源注册表（示例：Java 多线程，对应 data/wiki/Java多线程.md）
+domains:
+  java-concurrency:
+    topic: Java 多线程 · 内存可见性
+    sources:
+      - name: JSR-133 / JLS §17
+        type: 规范
+        why: 内存模型的官方契约
+        locator: https://jcp.org/en/jsr/detail?id=133
+      - name: OpenJDK
+        type: 源码
+        why: 实现的现场事实
+        locator: https://github.com/openjdk/jdk
+      - name: Java 并发编程实战（Goetz）
+        type: 书籍
+        why: 体系化权威
+        locator: ISBN 978-7-111-37004-8
+      - name: Doug Lea 并发文档
+        type: 博客
+        why: 领域奠基者，交叉验证用
+        locator: http://gee.cs.oswego.edu/dl/

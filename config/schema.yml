@@ -1,0 +1,35 @@
+# 关系 schema（L4 图谱层）
+# 递进 = 竖·深度（is-a/contains 骨架，实体 ↔ 实体）；应用 = 锚点（机制卡 ↔ 实体）。
+# 类比不再是边：两个实体共享同一张机制卡时自然涌现（见 data/mechanism/cards.md）。
+
+# 实体类型（L3 抽实体用）
+entity_types: [概念, 机制, 产品, 规范, 人物]
+
+relations:
+  递进:
+    desc: A 是理解 B 的前置（要理解 B 必须先理解 A）
+    direction: "A -> B"
+    scope: 同领域（实体 ↔ 实体）
+    example: [JMM内存模型, volatile]
+  应用:
+    desc: 该机制卡作用于这个实体（把抽象机制落到具体场景）
+    direction: "卡 -> 实体"
+    scope: 跨层（机制卡 ↔ 实体）
+    example: [攒批写, InnoDB 刷盘]
+
+# 机制卡 schema（L4 抽卡用）
+mechanism_card:
+  fields: [name, problem, mechanism, tradeoff, boundary, cases]
+  name_rule: 卡名用动词锚定（如「攒批写」），不用名词——名词会糊、动词才可迁移
+
+# 判边硬边界（防 LLM 乱判）
+rules:
+  - 递进只判同领域前置；跨领域不判递进
+  - 应用只判「机制卡 → 实体」的锚定，不判实体与实体之间的应用
+  - 类比不判边：它由「两个实体共享同一张卡」涌现，不写进 edges
+  - 判不出即「无关」，不硬造边
+
+# 置信度门
+gates:
+  high: 直接挂边
+  low: 待复核，不进图谱

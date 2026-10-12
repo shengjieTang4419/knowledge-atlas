@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>个人知识 OS · 产品架构设计</title>
+<style>
+  :root {
+    --bg:#0d1117; --panel:#161b22; --panel2:#1c2330; --border:#30363d;
+    --text:#e6edf3; --dim:#8b949e; --accent:#58a6ff;
+    --green:#3fb950; --orange:#d29922; --purple:#bc8cff; --cyan:#39c5cf; --red:#f85149;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,"PingFang SC",sans-serif;line-height:1.65;padding:40px 32px;max-width:1180px;margin:0 auto}
+  code{background:#1f2937;padding:1px 7px;border-radius:4px;font-size:.86em;color:#79c0ff;font-family:"SF Mono",Menlo,monospace}
+
+  /* ---------- Hero ---------- */
+  .hero{text-align:center;margin-bottom:14px}
+  .hero .kicker{font-size:12px;letter-spacing:3px;color:var(--accent);text-transform:uppercase;margin-bottom:10px}
+  .hero h1{font-size:30px;font-weight:700}
+  .hero .one{margin-top:10px;font-size:15px;color:var(--dim)}
+  .hero .one b{color:var(--text)}
+
+  /* ---------- Flywheel ---------- */
+  .flywheel{display:flex;justify-content:center;margin:26px 0 8px}
+  .fly-note{text-align:center;color:var(--dim);font-size:12.5px;margin-bottom:44px}
+  .fly-note b{color:var(--orange)}
+
+  section{margin-bottom:52px}
+  .sec-head{display:flex;align-items:baseline;gap:12px;margin-bottom:6px}
+  .sec-head .no{font-size:13px;color:var(--accent);font-family:Menlo,monospace}
+  .sec-head h2{font-size:20px}
+  .sec-sub{color:var(--dim);font-size:13px;margin-bottom:22px}
+
+  /* ---------- Layer stack ---------- */
+  .stack-wrap{display:grid;grid-template-columns:1fr 320px;gap:28px;align-items:start}
+  @media(max-width:940px){.stack-wrap{grid-template-columns:1fr}}
+  .layer{border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-bottom:14px;cursor:pointer;background:var(--panel);transition:border-color .15s,transform .15s;position:relative;overflow:hidden}
+  .layer:hover{border-color:var(--accent);transform:translateX(4px)}
+  .layer.active{border-color:var(--accent);background:var(--panel2)}
+  .layer .band{position:absolute;left:0;top:0;bottom:0;width:5px}
+  .layer h3{font-size:16px;display:flex;align-items:center;gap:10px}
+  .layer .en{font-size:11px;color:var(--dim);font-family:Menlo,monospace;font-weight:400}
+  .layer .role{font-size:13px;color:var(--dim);margin-top:3px}
+  .layer .role b{color:#cdd9e5;font-weight:600}
+  .flow-arrow{text-align:center;margin:-8px 0 6px;color:var(--dim);font-size:13px;font-family:Menlo,monospace}
+  .flow-arrow span{background:var(--bg);padding:0 8px}
+  .crosscut-band{border:1.5px dashed var(--purple);border-radius:12px;padding:14px 20px;cursor:pointer;background:rgba(188,140,255,.07);margin-top:18px;transition:background .15s}
+  .crosscut-band:hover,.crosscut-band.active{background:rgba(188,140,255,.14)}
+  .crosscut-band h3{font-size:15px;color:var(--purple);display:flex;align-items:center;gap:10px}
+  .crosscut-band .en{font-size:11px;color:var(--dim);font-family:Menlo,monospace;font-weight:400}
+  .crosscut-band p{font-size:12.5px;color:var(--dim);margin-top:3px}
+
+  #layerDetail{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:22px;position:sticky;top:24px}
+  #layerDetail h2{font-size:17px;margin-bottom:4px}
+  #layerDetail .den{color:var(--dim);font-size:11px;font-family:Menlo,monospace;margin-bottom:14px}
+  #layerDetail .row{margin-bottom:14px}
+  #layerDetail .row .lab{font-size:12px;color:var(--accent);letter-spacing:1px;margin-bottom:4px}
+  #layerDetail .row p{font-size:13.5px;color:#cdd9e5}
+  #layerDetail ul{padding-left:18px;font-size:13.5px;color:#cdd9e5}
+  #layerDetail li{margin-bottom:4px}
+  #layerDetail .nope .lab{color:var(--red)}
+  #layerDetail .principle{border-top:1px dashed var(--border);padding-top:12px;margin-top:4px;font-size:12.5px;color:var(--dim)}
+  #layerDetail .principle b{color:var(--orange)}
+
+  /* ---------- Pipelines ---------- */
+  .pipes{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+  @media(max-width:860px){.pipes{grid-template-columns:1fr}}
+  .pipe{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:20px}
+  .pipe h3{font-size:15px;margin-bottom:3px}
+  .pipe h3 .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:8px}
+  .pipe.write h3 .dot{background:var(--green)} .pipe.read h3 .dot{background:var(--cyan)}
+  .pipe .p-sub{font-size:12px;color:var(--dim);margin-bottom:16px}
+  .step{display:flex;gap:12px;margin-bottom:12px}
+  .step .n{flex:none;width:24px;height:24px;border-radius:50%;background:var(--panel2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:12px;font-family:Menlo,monospace;color:var(--accent)}
+  .step .s-body{font-size:13px}
+  .step .s-body b{display:block;font-size:13.5px}
+  .step .s-body span{color:var(--dim);font-size:12.5px}
+  .gate{background:rgba(210,153,34,.1);border:1px solid rgba(210,153,34,.4);border-radius:8px;padding:10px 12px;font-size:12.5px;margin:4px 0 12px 36px;color:#e3b341}
+
+  /* ---------- Data model ---------- */
+  .dm{display:grid;grid-template-columns:380px 1fr;gap:22px;align-items:stretch}
+  @media(max-width:860px){.dm{grid-template-columns:1fr}}
+  .card-schema{background:var(--panel);border:1px solid var(--orange);border-radius:12px;padding:0;overflow:hidden}
+  .card-schema .cs-head{background:rgba(210,153,34,.14);padding:12px 18px;font-size:14px;font-weight:600;color:var(--orange)}
+  .card-schema table{width:100%;border-collapse:collapse;font-size:12.5px}
+  .card-schema td{padding:7px 18px;border-top:1px solid var(--border);vertical-align:top}
+  .card-schema td:first-child{color:#79c0ff;font-family:Menlo,monospace;white-space:nowrap;width:118px}
+  .card-schema td:last-child{color:var(--dim)}
+  .edges3{display:grid;grid-template-rows:repeat(3,1fr);gap:14px}
+  .edge{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px 18px;display:flex;gap:16px;align-items:center}
+  .edge .ico{flex:none;width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px}
+  .edge h4{font-size:14px}
+  .edge h4 code{font-size:11px;margin-left:6px}
+  .edge p{font-size:12.5px;color:var(--dim);margin-top:2px}
+  .edge .ex{font-size:12.5px;color:#cdd9e5;margin-top:5px}
+  .edge .ex b{color:var(--text)}
+
+  /* ---------- Tech stack ---------- */
+  .stack-table{width:100%;border-collapse:collapse;font-size:13px;background:var(--panel);border-radius:12px;overflow:hidden;border:1px solid var(--border)}
+  .stack-table th{background:var(--panel2);text-align:left;padding:10px 16px;font-size:12.5px;color:var(--accent);letter-spacing:.5px}
+  .stack-table td{padding:10px 16px;border-top:1px solid var(--border);vertical-align:top}
+  .stack-table td:first-child{font-weight:600;white-space:nowrap}
+  .stack-table .why{color:var(--dim);font-size:12.5px}
+
+  /* ---------- Principles ---------- */
+  .principles{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+  @media(max-width:760px){.principles{grid-template-columns:1fr}}
+  .prin{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:18px 20px}
+  .prin h4{font-size:14px;color:var(--accent);margin-bottom:5px}
+  .prin p{font-size:13px;color:var(--dim)}
+  .prin p b{color:#cdd9e5}
+
+  .footer{text-align:center;color:var(--dim);font-size:12px;padding-top:8px;border-top:1px solid var(--border)}
+</style>
+</head>
+<body>
+
+<!-- ================= HERO ================= -->
+<div class="hero">
+  <div class="kicker">Personal Knowledge OS · Architecture</div>
+  <h1>个人知识 OS —— 让新知识<b style="color:var(--accent)">挂得上</b>、<b style="color:var(--orange)">用得出</b></h1>
+  <div class="one">搜索感兴趣的知识 → 用<b>自己熟悉的方式</b>拆解类比 → <b>挂载</b>到已有知识节点 → 在真实场景中<b>灵活应用</b></div>
+</div>
+
+<!-- 价值飞轮 -->
+<div class="flywheel">
+  <svg width="560" height="240" viewBox="0 0 560 240">
+    <defs>
+      <marker id="ah" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6" fill="none" stroke="#58a6ff" stroke-width="1.4"/></marker>
+    </defs>
+    <!-- nodes -->
+    <g font-family="-apple-system,PingFang SC" font-size="13" text-anchor="middle">
+      <g><rect x="40" y="100" width="96" height="40" rx="10" fill="#161b22" stroke="#58a6ff"/><text x="88" y="125" fill="#e6edf3">🔍 搜索</text></g>
+      <g><rect x="184" y="40" width="96" height="40" rx="10" fill="#161b22" stroke="#39c5cf"/><text x="232" y="65" fill="#e6edf3">🧩 拆解类比</text></g>
+      <g><rect x="328" y="40" width="96" height="40" rx="10" fill="#161b22" stroke="#d29922"/><text x="376" y="65" fill="#e6edf3">⚓ 挂载</text></g>
+      <g><rect x="432" y="140" width="96" height="40" rx="10" fill="#161b22" stroke="#3fb950"/><text x="480" y="165" fill="#e6edf3">🎯 应用</text></g>
+      <g><rect x="184" y="170" width="96" height="40" rx="10" fill="#161b22" stroke="#bc8cff"/><text x="232" y="195" fill="#e6edf3">📥 沉淀</text></g>
+    </g>
+    <!-- arrows -->
+    <g fill="none" stroke="#58a6ff" stroke-width="1.6" marker-end="url(#ah)" opacity=".85">
+      <path d="M112,100 Q150,60 182,58"/>
+      <path d="M282,58 L326,58"/>
+      <path d="M402,80 Q470,100 478,138"/>
+      <path d="M436,180 Q330,225 282,196"/>
+      <path d="M182,190 Q90,175 86,142"/>
+    </g>
+    <text x="280" y="132" text-anchor="middle" font-size="12" fill="#8b949e">每一圈,体系更密、挂载更准</text>
+  </svg>
+</div>
+<div class="fly-note">产品的全部设计服务于这个飞轮:<b>挂载与应用是目的</b>,搜索与图谱是手段,沉淀反过来让下一次搜索更准。</div>
+
+<!-- ================= ① 架构分层 ================= -->
+<section>
+  <div class="sec-head"><span class="no">01</span><h2>架构分层:四层流水线 + 一个横切服务</h2></div>
+  <div class="sec-sub">数据自上而下流动:理解问题 → 找到材料 → 组织形态 → 建立迁移。Profile 不在流上,而在每一层的组装现场。点击各层查看职责契约。</div>
+
+  <div class="stack-wrap">
+    <div>
+      <div class="layer active" data-k="l1"><div class="band" style="background:var(--accent)"></div>
+        <h3>L1 · Topic 层 <span class="en">Query Understanding</span></h3>
+        <div class="role">把「一句话兴趣」翻译成「一组可检索的问题」—— 搜索 / 拆解 / 改写 / 关键字</div></div>
+      <div class="flow-arrow"><span>▼ 子查询 + 关键字</span></div>
+
+      <div class="layer" data-k="l2"><div class="band" style="background:var(--cyan)"></div>
+        <h3>L2 · 检索层 <span class="en">Hybrid Retrieval</span></h3>
+        <div class="role">双通道召回 + 置信度治理 —— 人工策展与机器召回互为兜底</div></div>
+      <div class="flow-arrow"><span>▼ 命中文档 + 候选实体</span></div>
+
+      <div class="layer" data-k="l3"><div class="band" style="background:var(--green)"></div>
+        <h3>L3 · 图谱层 <span class="en">Representation</span></h3>
+        <div class="role">知识的<b>形态</b>:wiki 骨架(实体/关系) + Markdown 血肉(文档跳转)</div></div>
+      <div class="flow-arrow"><span>▼ 实体节点 + 关联问题</span></div>
+
+      <div class="layer" data-k="l4"><div class="band" style="background:var(--orange)"></div>
+        <h3>L4 · 知识层 <span class="en">Mechanism</span></h3>
+        <div class="role">知识的<b>迁移</b>:机制卡 + 三种关系,让 juc→jvm→jmm 相连,让刷盘思想流向批量任务</div></div>
+
+      <div class="crosscut-band" data-k="l5">
+        <h3>⚡ Profile 服务 <span class="en">Cross-cutting Context</span></h3>
+        <p>横切注入:L1 的拆解策略 · L3 的呈现形态 · L4 的类比偏好 —— 同一份知识,按你的思维模式输出</p></div>
+    </div>
+    <div id="layerDetail"></div>
+  </div>
+</section>
+
+<!-- ================= ② 双链路 ================= -->
+<section>
+  <div class="sec-head"><span class="no">02</span><h2>两条主链路:沉淀与消费</h2></div>
+  <div class="sec-sub">写入链路决定体系的质量上限,查询链路决定体验的下限。两条链路共享同一份索引与机制卡库。</div>
+  <div class="pipes">
+    <div class="pipe write">
+      <h3><span class="dot"></span>写入链路 · 沉淀</h3>
+      <div class="p-sub">文档进 → 知识挂上体系。机器生成一律过信任闸,人肉确认才入库。</div>
+      <div class="step"><div class="n">1</div><div class="s-body"><b>文档接入</b><span>Markdown 真相源入库,git 可版本化、可回溯</span></div></div>
+      <div class="step"><div class="n">2</div><div class="s-body"><b>骨架抽取</b><span>LLM 抽实体/关系 → edges 表,渲染 wiki 骨架</span></div></div>
+      <div class="step"><div class="n">3</div><div class="s-body"><b>机制卡抽取</b><span>按固定 schema 抽「问题形态/解法结构/权衡/适用边界」</span></div></div>
+      <div class="step"><div class="n">4</div><div class="s-body"><b>挂载建议</b><span>机制卡空间召回候选 → LLM 判边型 + 置信度</span></div></div>
+      <div class="gate">⚖ 信任闸:置信度 &gt;0.8 自动挂 · 0.5~0.8 进待确认队列 · &lt;0.5 丢弃 —— 人只审中间带</div>
+      <div class="step"><div class="n">5</div><div class="s-body"><b>入库成网</b><span>节点 + 边写入,索引重建,进入可被检索的体系</span></div></div>
+    </div>
+    <div class="pipe read">
+      <h3><span class="dot"></span>查询链路 · 消费</h3>
+      <div class="p-sub">问题进 → 按你的思维模式输出,并顺手告诉你「它该挂在哪」。</div>
+      <div class="step"><div class="n">1</div><div class="s-body"><b>Topic 理解</b><span>拆解 / 改写 / 关键字,一次调用产出子查询组</span></div></div>
+      <div class="step"><div class="n">2</div><div class="s-body"><b>三路召回</b><span>BM25(精确) + 向量(语义) + 图游走(多跳)</span></div></div>
+      <div class="step"><div class="n">3</div><div class="s-body"><b>重排组装</b><span>rerank 后按 Profile 切片组装上下文</span></div></div>
+      <div class="step"><div class="n">4</div><div class="s-body"><b>类比生成</b><span>在机制卡空间找「你已懂的同构机制」,新知挂旧知</span></div></div>
+      <div class="step"><div class="n">5</div><div class="s-body"><b>带引用输出</b><span>答案 + 骨架跳转 + <b>挂载建议</b>(它该连到体系的哪个节点)</span></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= ③ 数据模型 ================= -->
+<section>
+  <div class="sec-head"><span class="no">03</span><h2>核心数据模型:机制卡 × 三种关系</h2></div>
+  <div class="sec-sub">系统只有一种「一等公民」(机制卡)和三种「关系」。关键修正:类比不是实体之间的边,而是两个实体<b>共享同一张卡</b>涌现出来的。</div>
+  <div class="dm">
+    <div class="card-schema">
+      <div class="cs-head">🃏 机制卡(Mechanism Card)</div>
+      <table>
+        <tr><td>name</td><td>机制名称,如「批量阈值落盘」</td></tr>
+        <tr><td>problem</td><td>解决什么问题形态(不是解决什么业务)</td></tr>
+        <tr><td>mechanism</td><td>核心机制:一句话说清怎么做到的</td></tr>
+        <tr><td>tradeoff</td><td>权衡:付出了什么代价</td></tr>
+        <tr><td>boundary</td><td>适用边界:什么时候不该用它</td></tr>
+        <tr><td>cases</td><td>迁移案例集:已知出现在哪些领域</td></tr>
+      </table>
+    </div>
+    <div class="edges3">
+      <div class="edge"><div class="ico" style="background:rgba(88,166,255,.12)">🔗</div>
+        <div><h4>is-a / contains <code>骨架边</code></h4><p>实体 ↔ 实体,客观知识层级。LLM 抽得准、量大、稳定,是网的经纬。</p><div class="ex"><b>juc → jvm → jmm</b>:前置知识链,多跳遍历的主干道。</div></div></div>
+      <div class="edge"><div class="ico" style="background:rgba(63,185,80,.12)">🎯</div>
+        <div><h4>applies-to <code>锚点边</code></h4><p>机制卡 ↔ 实体,把抽象拉回具体场景。从真实工作反向标注,越用越准,是网的密度。</p><div class="ex"><b>TCC 卡 → 订单流水的预扣 / 解锁</b>:知道能用在哪,才叫学会。</div></div></div>
+      <div class="edge"><div class="ico" style="background:rgba(210,153,34,.12)">⚡</div>
+        <div><h4>类比 <code>涌现关系 · 不是边</code></h4><p>两个实体<b>共同指向同一张卡</b>,「一看就通」自然涌现。少而精、主观、要人审,是网的高度(金线)。</p><div class="ex"><b>InnoDB 刷盘 & 定时任务批量写</b>:都挂在「攒批写」这张卡上。</div></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= ④ 卡 / 实例两层模型 ================= -->
+<section>
+  <div class="sec-head"><span class="no">04</span><h2>卡 / 实例两层模型 —— 机制卡的生死线</h2></div>
+  <div class="sec-sub">机制卡模型的成败,不在「能不能抽出卡」,在「卡」与「实例」是不是分成了两层。你的三个例子,恰好是三种关系,各归各的。</div>
+
+  <table class="stack-table" style="margin-bottom:22px">
+    <tr><th>你的例子</th><th>它是什么关系</th><th>谁管它</th></tr>
+    <tr><td><code>juc → jvm → jmm</code> 天生关联</td><td>is-a / 前置:客观知识层级</td><td>图谱骨架(实体层内部横向连)</td></tr>
+    <tr><td><code>InnoDB 刷盘 → 定时任务批量刷盘</code></td><td><b>同一张卡的两个实例</b>,不是一条边</td><td>机制卡 + applies-to</td></tr>
+    <tr><td><code>TCC → 订单预扣 / 解锁</code></td><td>机制 → 业务场景</td><td>applies-to 锚点边</td></tr>
+  </table>
+
+  <div style="background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:10px;overflow-x:auto">
+  <svg width="840" height="400" viewBox="0 0 840 400" font-family="-apple-system,PingFang SC">
+    <defs>
+      <marker id="mh" markerWidth="9" markerHeight="9" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="none" stroke="#3fb950" stroke-width="1.6"/></marker>
+      <marker id="mha" markerWidth="9" markerHeight="9" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="none" stroke="#58a6ff" stroke-width="1.6"/></marker>
+    </defs>
+    <!-- 机制卡层 -->
+    <text x="20" y="30" fill="#bc8cff" font-size="14" font-weight="600">🃏 机制卡层 · 抽象 · 少而精 · 金线</text>
+    <g>
+      <rect x="70" y="46" width="220" height="76" rx="12" fill="#161b22" stroke="#bc8cff" stroke-width="1.6"/>
+      <text x="180" y="70" text-anchor="middle" fill="#e6edf3" font-size="14" font-weight="600">攒批写</text>
+      <text x="180" y="90" text-anchor="middle" fill="#8b949e" font-size="11">随机写合并为顺序写</text>
+      <text x="180" y="106" text-anchor="middle" fill="#8b949e" font-size="11">用延迟换吞吐</text>
+      <rect x="420" y="46" width="220" height="76" rx="12" fill="#161b22" stroke="#bc8cff" stroke-width="1.6"/>
+      <text x="530" y="70" text-anchor="middle" fill="#e6edf3" font-size="14" font-weight="600">TCC 两阶段</text>
+      <text x="530" y="90" text-anchor="middle" fill="#8b949e" font-size="11">Try 预留 / Confirm 提交</text>
+      <text x="530" y="106" text-anchor="middle" fill="#8b949e" font-size="11">Cancel 回滚</text>
+    </g>
+    <!-- applies-to 虚线 -->
+    <g stroke="#3fb950" stroke-width="1.6" stroke-dasharray="5,4" marker-end="url(#mh)" opacity=".9">
+      <line x1="150" y1="122" x2="105" y2="246"/>
+      <line x1="205" y1="122" x2="230" y2="246"/>
+      <line x1="260" y1="122" x2="355" y2="246"/>
+      <line x1="490" y1="122" x2="490" y2="246"/>
+      <line x1="575" y1="122" x2="615" y2="246"/>
+    </g>
+    <text x="330" y="192" fill="#3fb950" font-size="12" text-anchor="middle">▲ applies-to 锚点边(卡 ↔ 实体)</text>
+    <!-- 实体层 -->
+    <text x="20" y="240" fill="#58a6ff" font-size="14" font-weight="600">🔗 实体层 · 具体 · 多 · 网体</text>
+    <g>
+      <rect x="40" y="250" width="130" height="46" rx="9" fill="#161b22" stroke="#58a6ff"/>
+      <text x="105" y="278" text-anchor="middle" fill="#e6edf3" font-size="12.5">InnoDB 刷盘</text>
+      <rect x="165" y="250" width="130" height="46" rx="9" fill="#161b22" stroke="#58a6ff"/>
+      <text x="230" y="278" text-anchor="middle" fill="#e6edf3" font-size="12.5">定时任务批量写</text>
+      <rect x="290" y="250" width="130" height="46" rx="9" fill="#161b22" stroke="#58a6ff"/>
+      <text x="355" y="278" text-anchor="middle" fill="#e6edf3" font-size="12.5">批量 INSERT</text>
+      <rect x="425" y="250" width="130" height="46" rx="9" fill="#161b22" stroke="#58a6ff"/>
+      <text x="490" y="278" text-anchor="middle" fill="#e6edf3" font-size="12.5">订单预扣</text>
+      <rect x="550" y="250" width="130" height="46" rx="9" fill="#161b22" stroke="#58a6ff"/>
+      <text x="615" y="278" text-anchor="middle" fill="#e6edf3" font-size="12.5">库存扣减</text>
+    </g>
+    <!-- is-a 示意 -->
+    <g stroke="#58a6ff" stroke-width="1.6" marker-end="url(#mha)" opacity=".7">
+      <line x1="470" y1="326" x2="520" y2="326"/>
+    </g>
+    <text x="495" y="346" text-anchor="middle" fill="#8b949e" font-size="11">is-a 在实体层内部横向连(如 juc → jvm → jmm)</text>
+    <!-- 类比涌现标注 -->
+    <rect x="712" y="120" width="116" height="128" rx="10" fill="rgba(210,153,34,.1)" stroke="#d29922" stroke-width="1.4"/>
+    <text x="770" y="150" text-anchor="middle" fill="#d29922" font-size="12" font-weight="600">⚡ 类比</text>
+    <text x="770" y="172" text-anchor="middle" fill="#cdd9e5" font-size="11">两个实体</text>
+    <text x="770" y="188" text-anchor="middle" fill="#cdd9e5" font-size="11">共享同一张卡</text>
+    <text x="770" y="206" text-anchor="middle" fill="#cdd9e5" font-size="11">= 一看就通</text>
+    <text x="770" y="226" text-anchor="middle" fill="#8b949e" font-size="10.5">(涌现 · 不是边)</text>
+    <path d="M712 184 Q650 184 300 180" fill="none" stroke="#d29922" stroke-width="1.3" stroke-dasharray="4,4" opacity=".7"/>
+  </svg>
+  </div>
+
+  <div style="margin-top:18px;background:#1c2330;border-left:3px solid var(--orange);padding:12px 14px;border-radius:0 8px 8px 0;font-size:13.5px;color:#cdd9e5">
+    <b style="color:var(--orange)">网体 vs 金线 ·</b> 网体 = is-a(骨架) + applies-to(锚点),量大、稳定、LLM 抽得准;机制卡 = 网里的<b>金线</b>,少而精、主观、要人审。你之前把最难最稀缺的 20%(机制卡)当成了网的全部,所以觉得撑不起一张网——反过来,机制卡决定网的高度,不决定网的密度。
+  </div>
+</section>
+
+<!-- ================= ⑤ 技术栈 ================= -->
+<section>
+  <div class="sec-head"><span class="no">05</span><h2>技术栈:一个文件扛索引,复用优先于新建</h2></div>
+  <div class="sec-sub">Python 全家桶。原则是:已解问题用现成服务,资源全部投给机制层。</div>
+  <table class="stack-table">
+    <tr><th>部件</th><th>选型</th><th>为什么</th></tr>
+    <tr><td>真相源</td><td>Markdown + frontmatter</td><td class="why">git 可版本化;Obsidian 直接可视化;人写零成本。血肉永远是人可读的文本</td></tr>
+    <tr><td>索引</td><td>SQLite 单文件:FTS5 + sqlite-vec + edges 表</td><td class="why">BM25 / 向量 / 图 三个索引进一个文件;demo 期不引入 Neo4j/Milvus/ES</td></tr>
+    <tr><td>多跳遍历</td><td>SQLite recursive CTE</td><td class="why">个人知识量级(万级边)下,递归查询足够;图数据库是规模化之后的事</td></tr>
+    <tr><td>检索服务</td><td>复用本地 WeKnora</td><td class="why">已在跑、有 API;混合检索是已解问题,不重造</td></tr>
+    <tr><td>LLM / Embedding</td><td>现有 relay(dashscope / ifans)</td><td class="why">通道现成;机制卡抽取、改写、判边全走这一路</td></tr>
+    <tr><td>重排</td><td>bge-reranker</td><td class="why">小成本换召回质量,性价比最高的一个组件</td></tr>
+    <tr><td>信任闸</td><td>LLM-as-judge + 三档置信度</td><td class="why">>0.8 自动 / 0.5~0.8 人审 / <0.5 丢弃,人的注意力只花在中间带</td></tr>
+    <tr><td>Profile</td><td>profile.yaml + 组装器注入</td><td class="why">先手工维护三个开关,验证「注入即生效」;画像学习是后话</td></tr>
+  </table>
+</section>
+
+<!-- ================= ⑥ 设计原则 ================= -->
+<section>
+  <div class="sec-head"><span class="no">06</span><h2>贯穿全线的设计原则</h2></div>
+  <div class="sec-sub">这些不是口号,是每一层做取舍时的裁决依据。</div>
+  <div class="principles">
+    <div class="prin"><h4>机制即资产</h4><p>文档会过时,<b>机制卡不会</b>。系统沉淀的真正资产是机制卡库与边网络,软件只是它的容器。</p></div>
+    <div class="prin"><h4>无非必要,不增实体</h4><p>每加一个组件先问谁触发它。demo 期索引不配拥有独立中间件,<b>能复用的绝不自建</b>。</p></div>
+    <div class="prin"><h4>信任分级,人肉只审中间带</h4><p>机器产物全是不可信输入:高置信自动过、低置信自动弃、<b>人的注意力只投给灰色地带</b>。</p></div>
+    <div class="prin"><h4>骨架可糙,血肉必须可信</h4><p>机器抽的骨架允许不完美(可重抽);入库的血肉(文档/机制卡)<b>必须人写或人审</b>。</p></div>
+    <div class="prin"><h4>挂载优先于收藏</h4><p>一条新知识入库时必须回答「<b>它连在哪</b>」。连不上的知识,宁可暂存待确认,不做孤岛收藏。</p></div>
+    <div class="prin"><h4>契约先行</h4><p>层与层之间只认契约(子查询组 / 召回集 / 实体节点 / 机制卡),<b>实现可换,契约不动</b>。</p></div>
+  </div>
+</section>
+
+<div class="footer">个人知识 OS · 产品架构设计 · 唐圣杰 · 2026-10-11</div>
+
+<script>
+const D = {
+  l1:{t:"L1 · Topic 层",en:"Query Understanding —— 查询理解",
+    duty:"把模糊的兴趣表达,翻译成一组结构化、可执行的检索意图。",
+    io:["输入:用户的一句话主题 / 问题","输出:3~5 个子查询 + 关键字列表(契约)"],
+    nope:["不做关键字匹配本身(那是 L2 的 BM25)","不堆砌改写花样——质量上限在检索与组装,不在本层"],
+    pr:"实现形态:一次 LLM 调用 + 一个 prompt。它是流水线里最薄的一层,也应该是。"},
+  l2:{t:"L2 · 检索层",en:"Hybrid Retrieval —— 混合召回",
+    duty:"用三条互补的通道把材料找全:BM25 管精确,向量管语义,图游走管多跳关联。",
+    io:["输入:子查询组 + 关键字","输出:命中文档 + 候选实体(带置信度)"],
+    nope:["不做知识组织(那是 L3/L4)","demo 期不自建引擎——本地 WeKnora 直接扛"],
+    pr:"「手工配置 + AI 自动检索」是双通道而非双来源:人工策展保 precision,机器召回保 recall,互为兜底。"},
+  l3:{t:"L3 · 图谱层",en:"Representation —— 知识的形态",
+    duty:"回答「知识长什么样」:骨架是实体与关系织成的 wiki,血肉是骨架每条边背后的原文文档。",
+    io:["输入:文档语料 + 抽取结果","输出:wiki 骨架页 + edges 表 + 可跳转的 md 文档"],
+    nope:["不承担知识之间的迁移发现(那是 L4)","机器生成的血肉不入库——信任底线"],
+    pr:"骨架/血肉分离:骨架允许机器抽、允许糙;血肉必须人写或人审。表示层越干净,机制层越好做。"},
+  l4:{t:"L4 · 知识层",en:"Mechanism —— 知识的迁移",
+    duty:"回答「知识怎么流动」:把知识点提炼成机制卡(卡/实例两层),让类比作为「共享同一张卡」自然涌现,而非实体之间的硬边。",
+    io:["输入:实体节点 + 文档","输出:机制卡库 + 两种显式边(is-a 骨架 / applies-to 锚点)+ 类比涌现关系"],
+    nope:["不做话题级相似(那是 embedding 在 L2 干的事)","不把类比做成实体-实体的硬边——它是共享卡的涌现,不是边"],
+    pr:"机制卡决定网的高度,不决定网的密度。网体是 is-a + applies-to;机制卡是少而精的金线。"},
+  l5:{t:"⚡ Profile 服务",en:"Cross-cutting Context —— 横切,不在流上",
+    duty:"持有「这个人的思维模式」,并在每一层的组装现场注入对应切片:怎么拆、怎么呈现、怎么类比。",
+    io:["输入:profile.yaml(抽象↔具象 / 要不要图 / 先结论还是先例子)","输出:注入各层 prompt 与渲染器的上下文切片"],
+    nope:["不是流水线的一层——它没有独立的输入输出变换","初期不做画像学习:底层思维模式不易变,手工维护就够"],
+    pr:"验收标准:同一次查询切两个 profile,输出形态肉眼可辨地不同。存了什么不重要,每层真用了才重要。"}
+};
+const el = document.getElementById('layerDetail');
+function render(k){
+  const d = D[k];
+  el.innerHTML = `<h2>${d.t}</h2><div class="den">${d.en}</div>
+    <div class="row"><div class="lab">职责</div><p>${d.duty}</p></div>
+    <div class="row"><div class="lab">输入 / 输出</div><ul>${d.io.map(x=>`<li>${x}</li>`).join('')}</ul></div>
+    <div class="row nope"><div class="lab">明确不做</div><ul>${d.nope.map(x=>`<li>${x}</li>`).join('')}</ul></div>
+    <div class="principle"><b>设计注记 ·</b> ${d.pr}</div>`;
+  document.querySelectorAll('.layer,.crosscut-band').forEach(e=>e.classList.toggle('active', e.dataset.k===k));
+}
+document.querySelectorAll('.layer,.crosscut-band').forEach(e=>e.addEventListener('click',()=>render(e.dataset.k)));
+render('l1');
+</script>
+</body>
+</html>
