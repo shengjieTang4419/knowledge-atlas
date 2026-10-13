@@ -30,6 +30,7 @@ __all__ = [
     "load_namespace",
     "normalize",
     "topic_matches",
+    "write_entity_cards",
 ]
 
 WIKI_DIR = DATA / "wiki"
@@ -179,7 +180,7 @@ def load_namespace(topic: str = "") -> Namespace:
 def build_namespace(topic: str, sources: list[Source]) -> Namespace:
     """可信源 → 单 namespace 拓扑。有 LLM 时抽取，否则解析现有 wiki 并挂上 sources。"""
     if is_online() and sources:
-        src_text = "\n".join(f"- {s.name}（{s.type}）：{s.locator}" for s in sources)
+        src_text = "\n".join(f"- {s.name}（{s.type}）：{s.home}" for s in sources)
         data = chat_json(
             "你是知识拓扑梳理器。从可信源抽取实体与关系。",
             f"主题：{topic}\n可信源：\n{src_text}\n"
@@ -200,12 +201,77 @@ def build_namespace(topic: str, sources: list[Source]) -> Namespace:
                 Relation(
                     src=str(r.get("src", "")).strip(),
                     dst=str(r.get("dst", "")).strip(),
+                    # 取值来自 LLM JSON（边界），schema 由 prompts/relation_typing.md 约束
                     type=str(r.get("type", "递进")).strip(),  # type: ignore[arg-type]
                 )
                 for r in data.get("relations") or []
                 if isinstance(r, dict) and str(r.get("src", "")).strip() and str(r.get("dst", "")).strip()
             ]
             return Namespace(topic=topic, sources=list(sources), entities=entities, relations=relations)
+        # 在线但模型没抽出实体：宁空勿全——退回 load_namespace 会把全量旧实体当成「新结果」
+        return Namespace(topic=topic, sources=list(sources))
     ns = load_namespace(topic)
     ns.sources = list(sources)
     return ns
+
+
+def _stem(name: str) -> str:
+    """文件名 stem = 实体名去空白（Obsidian 按文件名解析 `[[链接]]`，带空格会断链）。"""
+    return re.sub(r"\s+", "", name or "")
+
+
+def _link_name(name: str, by_key: dict[str, Entity]) -> str:
+    """关系端点 → `[[链接]]` 目标：优先用实体真名（保留大小写，匹配已建卡的文件名）。"""
+    ent = by_key.get(normalize(name))
+    return _stem(ent.name if ent else name)
+
+
+def write_entity_cards(
+    namespace: Namespace,
+    entities: list[Entity] | None = None,
+    *,
+    notes_dir: Path | None = None,
+) -> list[str]:
+    """把新实体写成双链卡 `data/wiki/notes/<stem>.md`（git 真相源）。
+
+    - 已存在的卡**跳过**（不覆盖人工已写内容）；
+    - `## 关系` 只写 namespace 内部关系（L3）；跨实体判出的边进 edges.md，不进卡；
+    - 返回实际写入的文件 stem 清单。
+    """
+    out_dir = notes_dir or NOTES_DIR
+    out_dir.mkdir(parents=True, exist_ok=True)
+    target = entities if entities is not None else namespace.entities
+    by_key = {normalize(e.name): e for e in namespace.entities}
+    domain = _stem(namespace.topic)
+    written: list[str] = []
+    for e in target:
+        stem = _stem(e.name)
+        if not stem:
+            continue
+        path = out_dir / f"{stem}.md"
+        if path.exists():
+            continue
+        my = normalize(e.name)
+        rels: list[str] = []
+        for r in namespace.relations:
+            if normalize(r.src) == my and normalize(r.dst) != my:
+                rels.append(f"- → [[{_link_name(r.dst, by_key)}]]")
+            elif normalize(r.dst) == my and normalize(r.src) != my:
+                rels.append(f"- ← [[{_link_name(r.src, by_key)}]]")
+        lines = [
+            "---",
+            f"领域: {domain}",
+            f"类型: 实体·{e.type}",
+            "---",
+            "",
+            f"# {e.name}",
+            "",
+            "## 一句话",
+            e.one_line or "（待补）",
+            "",
+            "## 关系",
+            *list(dict.fromkeys(rels)),
+        ]
+        path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        written.append(stem)
+    return written

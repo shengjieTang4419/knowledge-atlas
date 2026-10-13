@@ -9,7 +9,11 @@ const LAYERS = [
   { cmd: 'orient', label: 'L1 Topic 层 · 拆词', args: ['Java 多线程 · 内存可见性'] },
   { cmd: 'sources', label: 'L2 检索层 · 可信源', args: ['Java 多线程 · 内存可见性'] },
   { cmd: 'topology', label: 'L3 图谱层 · 拓扑', args: ['Java 多线程 · 内存可见性'] },
-  { cmd: 'attach', label: 'L4 知识层 · 挂载（dry-run）', args: ['Java 多线程 · 内存可见性', '--dry-run'] },
+  {
+    cmd: 'attach',
+    label: 'L4 知识层 · 挂载（dry-run）',
+    args: ['Java 多线程 · 内存可见性', '--dry-run']
+  },
   { cmd: 'cards', label: 'L4 · 机制卡列表', args: ['--json'] },
   { cmd: 'profile', label: '横切 · Profile（画像）', args: [] }
 ]
@@ -48,7 +52,8 @@ async function run(): Promise<void> {
     </div>
 
     <p class="note mono">
-      <b>逐层跑一遍看真实产出</b>（学习/调试用）：命令在仓库根执行 <code>uv run python -m app.cli …</code>，业务全在 Python，壳只转发。
+      <b>逐层跑一遍看真实产出</b>（学习/调试用）：命令在仓库根执行
+      <code>uv run python -m app.cli …</code>，业务全在 Python，壳只转发。
     </p>
 
     <template v-if="result">

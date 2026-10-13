@@ -8,6 +8,12 @@
 L1 topic 定向 → L2 检索层 → L3 拓扑层（单 namespace）→ L4 图谱层（多 topic 组合）→ L5 画像层
 ```
 
+## 核心概念：可信源两层（L2）
+
+**可信源 = 平台级**（GitHub / arXiv / Oracle 官方文档：泛化出处、跨主题复用，全局一份）；
+**条目 = 文件级**（某平台上具体哪个文件，挂在主题模块下）。id 取**宿主域名**，
+所以同一个站无论名字怎么写都只算一个平台——这是「可信源不爆炸」的机制保证。
+
 ## 核心概念：卡/实例两层 + 三种关系（v2）
 
 **机制卡** = 把可迁移的「解法动作」从语境中抽象出来的一等公民。
@@ -25,7 +31,7 @@ L1 topic 定向 → L2 检索层 → L3 拓扑层（单 namespace）→ L4 图�
 ```
 knowledge-atlas/
 ├── app/
-│   ├── models.py          # Source / Entity / Relation / Namespace / Edge / MechanismCard / Profile
+│   ├── models.py          # Source(平台) / SourceEntry(条目) / Entity / Relation / Namespace / Edge / MechanismCard / Profile
 │   ├── cli.py             # 薄入口
 │   ├── layers/            # topic · retrieve · topology · graph · mechanism · profile
 │   ├── rag/               # nanoRAG 内核：chunker · bpe · embed · fuse

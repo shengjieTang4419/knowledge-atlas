@@ -22,7 +22,9 @@ onMounted(async () => {
       <h2>机制卡 · 金线</h2>
       <span class="mono dim">{{ cards.length }} 张</span>
     </div>
-    <p class="sub dim">把可迁移的「解法动作」从语境抽象出来。类比 = 两个实体共享同一张卡（非边）。</p>
+    <p class="sub dim">
+      把可迁移的「解法动作」从语境抽象出来。类比 = 两个实体共享同一张卡（非边）。
+    </p>
 
     <p v-if="error" class="err mono">{{ error }}</p>
 
@@ -30,10 +32,22 @@ onMounted(async () => {
       <article v-for="c in cards" :key="c.name" class="card">
         <h3>{{ c.name }}</h3>
         <dl>
-          <div v-if="c.problem"><dt>问题形态</dt><dd>{{ c.problem }}</dd></div>
-          <div v-if="c.mechanism"><dt>核心机制</dt><dd>{{ c.mechanism }}</dd></div>
-          <div v-if="c.tradeoff"><dt>权衡</dt><dd>{{ c.tradeoff }}</dd></div>
-          <div v-if="c.boundary"><dt>适用边界</dt><dd>{{ c.boundary }}</dd></div>
+          <div v-if="c.problem">
+            <dt>问题形态</dt>
+            <dd>{{ c.problem }}</dd>
+          </div>
+          <div v-if="c.mechanism">
+            <dt>核心机制</dt>
+            <dd>{{ c.mechanism }}</dd>
+          </div>
+          <div v-if="c.tradeoff">
+            <dt>权衡</dt>
+            <dd>{{ c.tradeoff }}</dd>
+          </div>
+          <div v-if="c.boundary">
+            <dt>适用边界</dt>
+            <dd>{{ c.boundary }}</dd>
+          </div>
         </dl>
         <div class="cases">
           <span v-for="cs in c.cases" :key="cs" class="chip">{{ cs }}</span>

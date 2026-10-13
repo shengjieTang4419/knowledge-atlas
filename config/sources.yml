@@ -1,5 +1,15 @@
 # 可信源注册表 + 可信度分级（L2 检索层用）
-# 可信度越大越可信。规范/源码 = 确定性真相源（现场取，不进 RAG）；书籍/论文/博客 = 经验性（经梳理入 namespace）。
+#
+# ## 两层结构（2026-10-12 定，勿合并）
+# - `platforms` = **可信源（平台级）**：泛化、跨主题复用（GitHub / arXiv / Oracle 官方文档）。
+#   全局一份，搜十个主题都只有这一个 GitHub。
+# - `domains[].items` = **条目**：某平台上具体哪个文件/页面，依附主题，只对本主题有意义。
+#
+# `id` 一律取**宿主域名**（github.com / jcp.org）：同一个站无论名字怎么写都归一成一个平台，
+# 这是「可信源不爆炸」的机制保证——用户侧与 AI 收录也按同一规则派生 id（`settings.platform_id`）。
+#
+# 可信度（`credibility`）定在**平台**上（规范/源码最高 → 社区最低）：「这个站是什么性质」
+# 是跨主题成立的事实；单个文件的可信度跟着它所属的平台走。
 
 credibility:
   规范: 5
@@ -13,26 +23,46 @@ credibility:
 filters:
   hard: [稀缺, 贴合]
   soft: [门槛, 差分, 信噪]
-  max_sources: 5          # 宁缺勿滥
+  max_sources: 5          # 宁缺勿滥（口径：平台数，不是条目数）
 
-# 领域源注册表（示例：Java 多线程，对应 data/wiki/Java多线程.md）
+# ---------- 可信源（平台级，curated）----------
+platforms:
+  - id: jcp.org
+    name: JCP · JSR 规范库
+    type: 规范
+    why: Java 规范的官方发布渠道（JSR/JLS），确定性真相源
+    home: https://jcp.org
+  - id: github.com
+    name: GitHub
+    type: 源码
+    why: 一手实现与维护者讨论，可读真实代码与 issue
+    home: https://github.com
+  - id: oreilly.com
+    name: O'Reilly / 机械工业出版社
+    type: 书籍
+    why: 体系化权威，交叉验证用
+    home: https://www.oreilly.com
+  - id: gee.cs.oswego.edu
+    name: Doug Lea 个人站点
+    type: 博客
+    why: 领域奠基者本人文档，差分与溯源用
+    home: http://gee.cs.oswego.edu/dl/
+
+# ---------- 内置主题模块（curated 真相源）----------
+# 与用户模块同构：`items[].source` 引用上面某个平台的 id。
 domains:
   java-concurrency:
     topic: Java 多线程 · 内存可见性
-    sources:
-      - name: JSR-133 / JLS §17
-        type: 规范
-        why: 内存模型的官方契约
+    items:
+      - title: JSR-133 内存模型 / JLS §17.4
+        source: jcp.org
         locator: https://jcp.org/en/jsr/detail?id=133
-      - name: OpenJDK
-        type: 源码
-        why: 实现的现场事实
+      - title: OpenJDK hotspot 内存序与 volatile 实现
+        source: github.com
         locator: https://github.com/openjdk/jdk
-      - name: Java 并发编程实战（Goetz）
-        type: 书籍
-        why: 体系化权威
+      - title: 《Java 并发编程实战》第 2–3 章（内存可见性）
+        source: oreilly.com
         locator: ISBN 978-7-111-37004-8
-      - name: Doug Lea 并发文档
-        type: 博客
-        why: 领域奠基者，交叉验证用
-        locator: http://gee.cs.oswego.edu/dl/
+      - title: JSR-133 Cookbook（内存屏障速查）
+        source: gee.cs.oswego.edu
+        locator: http://gee.cs.oswego.edu/dl/jmm/cookbook.html

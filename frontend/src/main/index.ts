@@ -2,7 +2,7 @@
 import { join, normalize } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
-import { BrowserWindow, app, net, protocol, shell } from 'electron'
+import { BrowserWindow, app, net, protocol, screen, shell } from 'electron'
 
 import { registerIpc } from './ipc'
 
@@ -41,11 +41,21 @@ function serveRenderer(): void {
 }
 
 function createWindow(): void {
+  // 按「可用区」定尺寸（扣掉菜单栏与 Dock）。
+  //
+  // 实测根因：写死 height:1000 在 1512×982 的屏上**比可用区 885 还高** —— Electron 只能把
+  // 窗口顶到工作区顶部、底边溢出到 Dock 底下/屏幕外。于是贴窗口底边 `bottom:20px` 的右下角
+  // 设置入口（齿轮）就落进那条不可靠的带子里，用户「确实看不到」。
+  // 尺寸自适应可用区后，窗口四角都稳定落在可见范围内。
+  const { workAreaSize } = screen.getPrimaryDisplay()
+  const width = Math.min(1500, workAreaSize.width - 40)
+  const height = Math.min(1000, workAreaSize.height - 40)
+
   const win = new BrowserWindow({
-    width: 1500,
-    height: 1000,
-    minWidth: 1024,
-    minHeight: 680,
+    width,
+    height,
+    minWidth: Math.min(1024, width),
+    minHeight: Math.min(680, height),
     show: false,
     autoHideMenuBar: true,
     backgroundColor: '#0b0e13',

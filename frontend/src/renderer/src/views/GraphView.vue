@@ -125,7 +125,9 @@ function build(): void {
 
   // 悬停高亮：邻居 + 相连边保持，其余变淡
   cy.on('mouseover', 'node', evt => {
-    cy?.elements().difference((evt.target as NodeSingular).closedNeighborhood()).addClass('dimmed')
+    cy?.elements()
+      .difference((evt.target as NodeSingular).closedNeighborhood())
+      .addClass('dimmed')
   })
   cy.on('mouseout', 'node', () => cy?.elements().removeClass('dimmed'))
 }
@@ -171,7 +173,9 @@ onBeforeUnmount(() => cy?.destroy())
     </div>
 
     <div class="legend">
-      <span v-for="[d, c] in legend" :key="d" class="lg"><i :style="{ background: c }" />{{ d }}</span>
+      <span v-for="[d, c] in legend" :key="d" class="lg"
+        ><i :style="{ background: c }" />{{ d }}</span
+      >
       <span class="lg hint">◇ 双环 = 机制卡（金线）</span>
     </div>
 
@@ -255,7 +259,7 @@ onBeforeUnmount(() => cy?.destroy())
   margin-top: 12px;
   border: 1px solid var(--line);
   border-radius: 12px;
-  background:
-    radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.04) 1px, transparent 0) 0 0 / 26px 26px;
+  background: radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.04) 1px, transparent 0) 0 0 /
+    26px 26px;
 }
 </style>

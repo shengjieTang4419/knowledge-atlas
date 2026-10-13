@@ -1,5 +1,14 @@
 """L3 层验收：wiki 解析 → 实体 / 关系 / 对齐（离线确定性路径）。"""
-from app.layers.topology import WIKI_DIR, all_entities, entity_domains, load_namespace, normalize, topic_matches
+from app.layers.topology import (
+    WIKI_DIR,
+    all_entities,
+    entity_domains,
+    load_namespace,
+    normalize,
+    topic_matches,
+    write_entity_cards,
+)
+from app.models import Entity, Namespace, Relation
 
 
 def test_wiki_present():
@@ -60,3 +69,34 @@ def test_prerequisite_chain_direction():
     # 关系键走 normalize()（去空白 + 小写），与实体键同口径
     assert ("jmm内存模型", "volatile") in edges
     assert ("volatile", "jmm内存模型") not in edges, "反向边不该存在"
+
+
+def test_write_entity_cards_roundtrip(tmp_path):
+    """写卡 → 卡文件带 frontmatter/一句话/关系链接；已存在不覆盖。"""
+    ns = Namespace(
+        topic="测试主题",
+        entities=[
+            Entity(name="A 实体", type="概念", one_line="A 的一句话"),
+            Entity(name="B 实体", type="机制", one_line="B 的一句话"),
+        ],
+        relations=[Relation(src="A实体", dst="B实体", type="递进")],
+    )
+    written = write_entity_cards(ns, ns.entities, notes_dir=tmp_path)
+    assert set(written) == {"A实体", "B实体"}
+    a_text = (tmp_path / "A实体.md").read_text(encoding="utf-8")
+    assert "领域: 测试主题" in a_text
+    assert "类型: 实体·概念" in a_text
+    assert "# A 实体" in a_text
+    assert "## 一句话" in a_text and "A 的一句话" in a_text
+    assert "→ [[B实体]]" in a_text, "A 指向 B 的关系链接应写入"
+    b_text = (tmp_path / "B实体.md").read_text(encoding="utf-8")
+    assert "← [[A实体]]" in b_text, "B 的入边应是 ← A"
+
+
+def test_write_entity_cards_skips_existing(tmp_path):
+    """已存在的卡不覆盖（保护人工编辑）。"""
+    path = tmp_path / "已存在实体.md"
+    path.write_text("人工内容，别动", encoding="utf-8")
+    ns = Namespace(topic="t", entities=[Entity(name="已存在实体", type="概念", one_line="x")])
+    assert write_entity_cards(ns, ns.entities, notes_dir=tmp_path) == []
+    assert path.read_text(encoding="utf-8") == "人工内容，别动"

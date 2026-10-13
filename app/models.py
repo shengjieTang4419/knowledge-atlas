@@ -15,11 +15,42 @@ SourceType = Literal["规范", "源码", "书籍", "论文", "博客", "社区"]
 
 @dataclass
 class Source:
-    """可信源（L2 产物）。"""
+    """可信源（L2 产物）= **平台级**：GitHub / arXiv / Oracle 官方文档 这种泛化出处。
+
+    平台跨主题复用：搜十个主题，同一个 GitHub 仍只是一条。同一平台上的具体文件是
+    `SourceEntry`（条目）——两者混在一层，攒出来的「可信源」全是一次性的，等于没有。
+    """
     name: str
     type: SourceType
-    why: str = ""        # 为什么可信
-    locator: str = ""    # 链接 / 定位 / clone 方式
+    why: str = ""        # 为什么这个平台可信（跨主题成立）
+    home: str = ""       # 平台入口（站点 / 仓库 / 出版方）
+    id: str = ""         # 归一 id（宿主域名优先，如 github.com）——条目靠它引用平台
+    origin: str = "builtin"  # builtin | auto | manual
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "name": self.name,
+            "type": self.type,
+            "why": self.why,
+            "home": self.home,
+            "origin": self.origin,
+        }
+
+
+@dataclass
+class SourceEntry:
+    """可信源下的**具体条目**：某平台上的哪个文件 / 页面 / 章节。
+
+    条目依附主题（arXiv 上哪篇论文，只对这个主题有意义），故挂在主题模块下，不全局注册。
+    """
+    title: str
+    source: str = ""     # 所属平台 id（Source.id）
+    locator: str = ""    # 具体定位（URL / 章节 / ISBN+页码）
+    note: str = ""       # 为什么这条值得读
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"title": self.title, "source": self.source, "locator": self.locator, "note": self.note}
 
 
 @dataclass

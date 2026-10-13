@@ -49,3 +49,6 @@ ledger/*.jpg
 
 # 日志
 *.log
+
+# Electron 构建产物（验证用输出）
+frontend/out-verify*/

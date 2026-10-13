@@ -7,18 +7,29 @@
  * 契约边界：CLI 吐的是 Python 侧字段名（snake_case），这里映射成前端模型（camelCase）。
  */
 import { execFile } from 'node:child_process'
+import { rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { promisify } from 'node:util'
 
 import type {
   CliResult,
+  CommitResult,
+  DraftPreview,
   GraphBox,
   GraphData,
   GraphLink,
   GraphNode,
+  HistoryItem,
+  LlmConfigView,
+  LlmProbeResult,
   MechCard,
+  PlatformAddResult,
   SearchResult,
-  SourceItem,
-  TrustedModule
+  SourceEntry,
+  TrustedModule,
+  TrustedSource,
+  TrustedSourceInput
 } from '../shared/ipc'
 import { repoRoot } from './paths'
 
@@ -127,6 +138,27 @@ export async function searchTopic(topic: string, limit = 5): Promise<SearchResul
   return parseJson<SearchResult>(res, '搜索主题')
 }
 
+export async function draftTopic(topic: string): Promise<DraftPreview> {
+  // draft 恒吐 JSON（无 --json 开关），只算不写盘，供人工审核
+  const res = await runCli(['draft', topic])
+  return parseJson<DraftPreview>(res, '生成预览')
+}
+
+export async function commitDraft(draft: DraftPreview): Promise<CommitResult> {
+  // 审核后的 draft 经临时文件回传（比走 argv 更耐大小/转义），Python 侧读文件写盘
+  const file = join(
+    tmpdir(),
+    `atlas-draft-${Date.now()}-${Math.random().toString(36).slice(2)}.json`
+  )
+  writeFileSync(file, JSON.stringify(draft), 'utf-8')
+  try {
+    const res = await runCli(['commit', '--file', file])
+    return parseJson<CommitResult>(res, '写入图谱')
+  } finally {
+    rmSync(file, { force: true })
+  }
+}
+
 export async function modulesList(): Promise<TrustedModule[]> {
   const res = await runCli(['modules', '--json'])
   return parseJson<{ modules: TrustedModule[] }>(res, '读取模块').modules
@@ -135,6 +167,16 @@ export async function modulesList(): Promise<TrustedModule[]> {
 export async function mechCardsList(): Promise<MechCard[]> {
   const res = await runCli(['cards', '--json'])
   return parseJson<MechCard[]>(res, '读取机制卡')
+}
+
+export async function historyList(): Promise<HistoryItem[]> {
+  const res = await runCli(['history', '--json'])
+  return parseJson<{ history: HistoryItem[] }>(res, '读取搜索历史').history
+}
+
+export async function historyClear(): Promise<HistoryItem[]> {
+  const res = await runCli(['history-clear', '--json'])
+  return parseJson<{ history: HistoryItem[] }>(res, '清空搜索历史').history
 }
 
 export async function moduleSave(topic: string, keywords: string[] = []): Promise<TrustedModule[]> {
@@ -149,25 +191,77 @@ export async function moduleDelete(id: string): Promise<TrustedModule[]> {
   return parseJson<{ modules: TrustedModule[] }>(res, '删除模块').modules
 }
 
-export async function sourceAdd(moduleId: string, item: SourceItem): Promise<TrustedModule[]> {
+export async function platformsList(): Promise<TrustedSource[]> {
+  const res = await runCli(['platforms', '--json'])
+  return parseJson<{ platforms: TrustedSource[] }>(res, '读取可信源').platforms
+}
+
+export async function platformAdd(item: TrustedSourceInput): Promise<PlatformAddResult> {
+  // id 由 Python 归一（宿主域名优先），前端不猜
   const res = await runCli([
-    'source-add',
-    '--module',
-    moduleId,
+    'platform-add',
     '--name',
     item.name,
     '--type',
     item.type,
-    '--locator',
-    item.locator,
+    '--home',
+    item.home,
     '--why',
     item.why,
     '--json'
   ])
-  return parseJson<{ modules: TrustedModule[] }>(res, '保存可信源').modules
+  return parseJson<PlatformAddResult>(res, '保存可信源')
 }
 
-export async function sourceRemove(moduleId: string, name: string): Promise<TrustedModule[]> {
-  const res = await runCli(['source-remove', '--module', moduleId, '--name', name, '--json'])
-  return parseJson<{ modules: TrustedModule[] }>(res, '删除可信源').modules
+export async function platformRemove(id: string): Promise<TrustedSource[]> {
+  const res = await runCli(['platform-remove', '--id', id, '--json'])
+  return parseJson<{ platforms: TrustedSource[] }>(res, '删除可信源').platforms
+}
+
+export async function entryAdd(moduleId: string, entry: SourceEntry): Promise<TrustedModule[]> {
+  const res = await runCli([
+    'entry-add',
+    '--module',
+    moduleId,
+    '--title',
+    entry.title,
+    '--source',
+    entry.source,
+    '--locator',
+    entry.locator,
+    '--note',
+    entry.note,
+    '--json'
+  ])
+  return parseJson<{ modules: TrustedModule[] }>(res, '保存条目').modules
+}
+
+export async function entryRemove(moduleId: string, title: string): Promise<TrustedModule[]> {
+  const res = await runCli(['entry-remove', '--module', moduleId, '--title', title, '--json'])
+  return parseJson<{ modules: TrustedModule[] }>(res, '删除条目').modules
+}
+
+// ---------- 模型资源（系统配置弹层里改，落 data/settings/llm.json）----------
+
+export async function llmConfig(): Promise<LlmConfigView> {
+  const res = await runCli(['llm-config', '--json'])
+  return parseJson<LlmConfigView>(res, '读取模型配置')
+}
+
+export async function llmConfigSave(cfg: LlmConfigView): Promise<LlmConfigView> {
+  // 与 commit 同法：走临时文件（配置含 Key，比 argv 更稳、也不进进程列表）
+  const file = join(tmpdir(), `atlas-llm-${Date.now()}-${Math.random().toString(36).slice(2)}.json`)
+  writeFileSync(file, JSON.stringify(cfg), 'utf-8')
+  try {
+    const res = await runCli(['llm-config-save', '--file', file])
+    return parseJson<LlmConfigView>(res, '保存模型配置')
+  } finally {
+    rmSync(file, { force: true })
+  }
+}
+
+export async function llmProbe(tier = 'all'): Promise<LlmProbeResult[]> {
+  // 真调：最坏耗时 ≈ 单次超时 × 最多尝试数，故给足超时（默认 60s 会被截断）
+  const res = await runCli(['llm-probe', '--tier', tier], 300_000)
+  return parseJson<{ tiers: LlmProbeResult[] }>(res, '测试模型连通').tiers
 }

@@ -22,10 +22,10 @@ if TYPE_CHECKING:
 from app.config import DATA, load_schema
 from app.layers.topology import all_entities, entity_domains, normalize
 from app.llm import chat_json, is_online, relation_schema_hint
-from app.models import Edge, Namespace
+from app.models import Edge, MechanismCard, Namespace
 from app.rag.embed import cosine_similarity, embed
 
-__all__ = ["DEFAULT_MIN_SCORE", "EDGES_PATH", "attach", "judge", "load_edges", "recall", "write_edges"]
+__all__ = ["DEFAULT_MIN_SCORE", "EDGES_PATH", "attach", "judge", "load_edges", "plan", "recall", "write_edges"]
 
 EDGES_PATH: Path = DATA / "graph" / "edges.md"
 
@@ -62,6 +62,7 @@ def load_edges(path: Path | None = None) -> list[Edge]:
         src, etype, dst, note = (g.strip() for g in m.groups())
         if etype not in _VALID_TYPES or src in {"源", "---"} or set(src) <= {"-"}:
             continue
+        # etype 已按 _VALID_TYPES 过滤，mypy 收窄不了 str→Literal
         edges.append(Edge(src=src, dst=dst, type=etype, confidence="high", reason=note))  # type: ignore[arg-type]
     return edges
 
@@ -140,28 +141,26 @@ def judge(src: str, dst: str) -> Edge | None:
     return None
 
 
-def attach(
+def plan(
     namespace: Namespace,
     *,
     top_k: int = 5,
     min_score: float = DEFAULT_MIN_SCORE,
-    dry_run: bool = False,
-) -> list[Edge]:
-    """新 namespace → 挂进全局图谱，返回新增的边（默认写盘）。
+) -> tuple[list[MechanismCard], list[Edge]]:
+    """纯计算：机制卡 + 边（应用/递进/内部关系升格），去重。**不写盘**。
 
-    顺序：① 抽机制卡并挂应用边（卡↔实体）→ ② 召回+判边挂递进边 → ③ 内部关系升格 → 去重写盘。
+    供「审核」流程：先算出给人工看，确认后由调用方决定写哪些（见 `attach`）。
+    顺序：① 抽机制卡挂应用边（卡↔实体）→ ② 召回+判边挂递进边 → ③ 内部关系升格 → ④ 去重。
     """
     from app.layers import mechanism  # 延迟导入：避免 layers 之间循环
 
+    cards = mechanism.extract_cards(namespace)
     known = all_entities()
     own = {normalize(e.name) for e in namespace.entities}
     new_edges: list[Edge] = []
 
-    # 1) 机制卡：抽取 → 入库 → 挂应用边（卡 → 实体）
-    cards = mechanism.extract_cards(namespace)
-    if cards:
-        mechanism.upsert_cards(cards)
-        new_edges.extend(mechanism.attach_cards(cards))
+    # 1) 机制卡 → 应用边（卡 → 实体）
+    new_edges.extend(mechanism.attach_cards(cards))
 
     # 2) cosine 召回最像的一对 → 判递进边
     for src_key, dst_key, _score in recall(namespace, top_k=top_k, min_score=min_score):
@@ -176,18 +175,38 @@ def attach(
                 Edge(src=rel.src, dst=rel.dst, type=rel.type, confidence="high", reason="namespace 内部关系")
             )
 
-    # 4) 去重（同 src/dst/type）
+    # 4) 去重（归一化端点：大小写/空白不同仍算同一条边）
     dedup: list[Edge] = []
     seen: set[tuple[str, str, str]] = set()
     for e in new_edges:
-        key = (e.src, e.dst, e.type)
+        key = (normalize(e.src), normalize(e.dst), e.type)
         if key not in seen:
             seen.add(key)
             dedup.append(e)
+    return cards, dedup
 
-    if not dry_run and dedup:
-        write_edges(dedup)
-    return dedup
+
+def attach(
+    namespace: Namespace,
+    *,
+    top_k: int = 5,
+    min_score: float = DEFAULT_MIN_SCORE,
+    dry_run: bool = False,
+) -> list[Edge]:
+    """新 namespace → 挂进全局图谱，返回新增的边（默认写盘：机制卡 + 边）。
+
+    `dry_run=True` 时只算不写——**含机制卡也不落盘**（这是「审核」流程依赖的纯预演语义）。
+    """
+    from app.layers import mechanism  # 延迟导入：避免 layers 之间循环
+
+    cards, edges = plan(namespace, top_k=top_k, min_score=min_score)
+    if dry_run:
+        return edges
+    if cards:
+        mechanism.upsert_cards(cards)
+    if edges:
+        write_edges(edges)
+    return edges
 
 
 def write_edges(edges: list[Edge], path: Path | None = None) -> Path:

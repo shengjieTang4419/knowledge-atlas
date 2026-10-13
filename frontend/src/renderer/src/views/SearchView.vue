@@ -1,23 +1,40 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
 import type { SearchResult } from '../../../shared/ipc'
 import { api } from '@/api'
+import { useAtlasStore } from '@/stores/atlas'
 
+const route = useRoute()
 const router = useRouter()
-const topic = ref('')
+const store = useAtlasStore()
+const topic = ref(typeof route.query.topic === 'string' ? route.query.topic : '')
 const result = ref<SearchResult | null>(null)
 const loading = ref(false)
 const error = ref('')
 
-/** 来源出处徽章（内置 / 我的配置 / 模型候选） */
+/** 可信源来路徽章（内置 / AI 自动收录 / 手工配置） */
 const ORIGIN_LABEL: Record<string, string> = {
   builtin: '内置模块',
   auto: 'AI 自动收录',
-  manual: '手工配置',
-  user: '手工配置',
-  llm: '模型候选（未收录）'
+  manual: '手工配置'
+}
+
+/** 平台 id → 展示名（条目上挂的是 id，界面要人话） */
+const platformNames = computed(() => {
+  const map = new Map<string, string>()
+  for (const s of result.value?.sources ?? []) map.set(s.id, s.name)
+  return map
+})
+
+function platformName(id: string): string {
+  return platformNames.value.get(id) ?? '未登记来源'
+}
+
+/** 定位里抽第一个 URL 当链接（可能写成「文档：https://…；源码：https://…」）；抽不到就不当链接 */
+function firstUrl(text: string): string {
+  return /https?:\/\/[^\s，,；;）)】\]]+/.exec(text)?.[0] ?? ''
 }
 
 /**
@@ -46,8 +63,14 @@ async function run(): Promise<void> {
   loading.value = true
   error.value = ''
   try {
-    result.value = await api.searchTopic(q)
+    const r = await api.searchTopic(q)
+    // 结果回来时页面可能已被清空或换了主题（点了侧栏「搜索」）——旧结果不许回填
+    if (topic.value.trim() !== q) return
+    result.value = r
+    // 搜过的主题落盘进历史（Python 侧记录），侧栏跟着刷新
+    await store.loadHistory()
   } catch (e) {
+    if (topic.value.trim() !== q) return
     error.value = e instanceof Error ? e.message : String(e)
     result.value = null
   } finally {
@@ -55,11 +78,42 @@ async function run(): Promise<void> {
   }
 }
 
-function gotoSettings(): void {
-  void router.push('/settings')
+/** 回到干净搜索页：输入框与上一次的结果一起清掉，别留着旧主题 */
+function reset(): void {
+  topic.value = ''
+  result.value = null
+  error.value = ''
+  loading.value = false
 }
 
-onMounted(run)
+function gotoSettings(): void {
+  // 开弹层而不是跳页：搜索结果是当前上下文，跳走就没了
+  store.openSettings('sources')
+}
+
+function generate(): void {
+  const t = result.value?.topic
+  if (t) void router.push({ path: '/review', query: { topic: t } })
+}
+
+// 侧栏点历史 = /search?topic=…：进来就自动搜这个主题；
+// 点侧栏「搜索」= /search（query 被清掉）：同一路由记录下组件会被复用，必须在此显式清空
+watch(
+  () => route.query.topic,
+  t => {
+    if (typeof t !== 'string' || !t.trim()) {
+      reset()
+      return
+    }
+    if (t === topic.value) return
+    topic.value = t
+    void run()
+  }
+)
+
+onMounted(() => {
+  if (topic.value.trim()) void run()
+})
 </script>
 
 <template>
@@ -89,30 +143,69 @@ onMounted(run)
         </div>
       </section>
 
-      <!-- 命中：列出来源 -->
+      <!-- 命中：可信源（平台）→ 具体条目（文件），两层分开列 -->
       <section v-if="result.matched" class="block">
         <div v-if="result.autoCollected" class="collected">
           <span class="badge">已自动收录</span>
           AI 判定的来源已存成一个模块，下次搜「{{ result.topic }}」直接命中，不再调用模型。
           <button class="link" @click="gotoSettings">去设置里看看</button>
         </div>
+
         <h3>
-          可信来源
-          <span class="count mono">{{ result.sources.length }} 条</span>
+          可信源
+          <span class="count mono">{{ result.sources.length }} 个平台</span>
         </h3>
+        <p class="layer-hint">平台级：泛化出处、跨主题复用（同一个 GitHub 只算一条）</p>
         <ul class="srcs">
-          <li v-for="s in result.sources" :key="s.name">
+          <li v-for="s in result.sources" :key="s.id">
             <div class="src-head">
               <span class="type" :class="`t-${s.type}`">{{ s.type }}</span>
               <span class="name">{{ s.name }}</span>
               <span class="origin mono">{{ ORIGIN_LABEL[s.origin] ?? s.origin }}</span>
             </div>
             <p v-if="s.why" class="why">{{ s.why }}</p>
-            <a v-if="s.locator" class="loc mono" :href="s.locator" target="_blank" rel="noreferrer">
-              {{ s.locator }}
+            <a
+              v-if="firstUrl(s.home)"
+              class="loc mono"
+              :href="firstUrl(s.home)"
+              target="_blank"
+              rel="noreferrer"
+            >
+              {{ s.home }}
             </a>
           </li>
         </ul>
+
+        <template v-if="result.items.length">
+          <h3 class="gap">
+            具体条目
+            <span class="count mono">{{ result.items.length }} 条</span>
+          </h3>
+          <p class="layer-hint">文件级：这个主题下具体读哪些（各自挂在上面某个平台下）</p>
+          <ul class="entries">
+            <li v-for="it in result.items" :key="`${it.title}|${it.locator}`">
+              <div class="entry-head">
+                <span class="from mono">{{ platformName(it.source) }}</span>
+                <span class="entry-title">{{ it.title }}</span>
+              </div>
+              <p v-if="it.note" class="why">{{ it.note }}</p>
+              <a
+                v-if="firstUrl(it.locator)"
+                class="loc mono"
+                :href="firstUrl(it.locator)"
+                target="_blank"
+                rel="noreferrer"
+              >
+                {{ it.locator }}
+              </a>
+              <span v-else-if="it.locator" class="loc plain mono">{{ it.locator }}</span>
+            </li>
+          </ul>
+        </template>
+
+        <div class="row">
+          <button class="primary" @click="generate">生成图谱 / 知识卡（先预览审核）</button>
+        </div>
       </section>
 
       <!-- 未命中：提示去配置（你要的那步） -->
@@ -189,6 +282,18 @@ button.primary:disabled {
   font-size: 13px;
   letter-spacing: 1px;
   color: var(--dim);
+}
+
+/* 第二层（条目）与上一层拉开距离，别糊成一块 */
+.block h3.gap {
+  margin-top: 24px;
+}
+
+.layer-hint {
+  margin: -4px 0 10px;
+  font-size: 11.5px;
+  color: var(--dim);
+  opacity: 0.75;
 }
 
 .count {
@@ -288,6 +393,62 @@ button.primary:disabled {
 
 .loc:hover {
   text-decoration: underline;
+}
+
+.loc.plain {
+  color: var(--dim);
+}
+
+/* 条目（文件级）：比平台卡片更轻，视觉上明确是「挂在平台下的东西」 */
+.entries {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.entries li {
+  padding: 8px 12px;
+  background: #0f1620;
+  border-left: 2px solid var(--line);
+  border-radius: 0 8px 8px 0;
+}
+
+.entry-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.entry-head .from {
+  padding: 1px 7px;
+  font-size: 10.5px;
+  color: var(--flow);
+  border: 1px solid rgba(79, 209, 197, 0.35);
+  border-radius: 7px;
+  white-space: nowrap;
+}
+
+.entry-title {
+  font-size: 13px;
+}
+
+.entries .why {
+  margin-top: 4px;
+  font-size: 11.5px;
+}
+
+.entries .loc {
+  margin-top: 3px;
+  font-size: 11px;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin-top: 14px;
 }
 
 .empty {

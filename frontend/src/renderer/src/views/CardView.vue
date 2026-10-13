@@ -18,7 +18,8 @@ const html = computed(() => {
     .replace(/^#\s+.*\n/, '') // 去首个 H1（标题已单独展示）
   const linked = body.replace(
     /\[\[([^\]|#]+)(?:\|([^\]]+))?\]\]/g,
-    (_m, target: string, label?: string) => `[${(label ?? target).trim()}](#/cards/${target.trim()})`
+    (_m, target: string, label?: string) =>
+      `[${(label ?? target).trim()}](#/cards/${target.trim()})`
   )
   return marked.parse(linked) as string
 })

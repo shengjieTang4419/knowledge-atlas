@@ -5,6 +5,7 @@ from app.layers.graph import (
     attach,
     judge,
     load_edges,
+    plan,
     recall,
     write_edges,
 )
@@ -76,6 +77,21 @@ def test_attach_dry_run_does_not_write():
 
 def test_attach_empty_namespace():
     assert attach(Namespace(topic="空"), dry_run=True) == []
+
+
+def test_plan_returns_cards_and_edges_and_is_pure():
+    ns = load_namespace("Java 多线程 · 内存可见性")
+    cards, edges = plan(ns)
+    # 离线态：无 LLM 不抽卡（宁缺勿滥），但边仍由启发式算出
+    assert isinstance(cards, list)
+    assert edges, "plan 应算出边（离线启发式）"
+    assert all(e.type in {"递进", "应用"} for e in edges)
+
+
+def test_plan_empty_namespace_is_empty():
+    cards, edges = plan(Namespace(topic="空"))
+    assert cards == []
+    assert edges == []
 
 
 def test_default_min_score_is_sane():
